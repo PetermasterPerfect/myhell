@@ -1,57 +1,69 @@
 #include "string_logic.h"
 #include <iostream>
 
-void parse()
+void main_shell_loop()
 {
-	std::string complete_cmd;
-	bool unclosed = false;
-	unclosed_type desired_closing; 
-		// only special cases that this shell handles are unclosed quotes 
-		// and unfinished pipes
-	std::string line;
-	std::getline(std::cin, line);
-	trim(line);
-	if(line[line.size()-1] == '\n')
+
+	while(1)
 	{
-		//parse_unfinished_pipe();
-		unclosed = true;
-	}
-	else
-	{
-		//desired_closing = determine_unclosed_quote(line, none_quote);
-		if(desired_closing != none_quote)
-			unclosed = true;
+		std::string s = get_single_command();
+
 	}
 }
+
+
 #define DEBUG_QTYPE(q) std::cout << #q << " " << q << "\n";
-:wa
-std::string parse_unclosed_quote(unclosed_type qtype)
+std::string get_single_command()
 {
 	std::string complete_line;
 	unclosed_type new_qtype = none_quote;
+	bool first = true;
 	do
 	{
 		std::string line;
-		std::cout << ">";
+		if(first)
+		{
+			std::cout << "$ ";
+			first = false;
+		}
+		else
+		{
+			new_qtype = new_qtype == pipe_sym || new_qtype == slash
+				? none_quote: new_qtype;
+			std::cout << "> ";
+		}
 		std::getline(std::cin, line);
-		trim_end(line);
 
 		new_qtype = determine_unclosed_quote(line, new_qtype);
 		DEBUG_QTYPE(new_qtype);	
 		complete_line += line + "\n";
-	}while(new_qtype != none_quote); 
+	}while(new_qtype != none_quote);
 	return complete_line;
 }
+
+std::vector<std::string> split_cmd(std::string cmd)
+{
+
+}
+
 
 unclosed_type determine_unclosed_quote(std::string line, unclosed_type old) 
 {
 	unclosed_type info = old;
 	bool pipe = false;
 	bool old_closed = old ? false: true;
+	bool slashed = false;
 	for(char &c: line)
 	{
+		if(slashed)
+		{
+			slashed = false;
+			continue;
+		}
+
 		if(is_char_quote(c))
 		{
+			
 			if(c == (char)old)
 				old_closed = true;
 
@@ -73,10 +85,17 @@ unclosed_type determine_unclosed_quote(std::string line, unclosed_type old)
 		}
 		else if(c == '|' && info == none_quote)
 			pipe = true;
+		else if(c == '\\')
+			slashed = true;
+
 	}
-	if(info == none_quote && (char)(*(line.end()-1)) == '|')
-		info = pipe_sym;	
+	trim_end(line); // <-- trim_end should return string so i'll be able to use it in if statement
+	if(info == none_quote)
+	{
+		if((char)*(line.end()-1) == '|')
+			info = pipe_sym;
+		else if((char)*(line.end()-1) == '\\')
+			info = slash;
+	}
 	return old_closed ? info: old;
 }
-
-

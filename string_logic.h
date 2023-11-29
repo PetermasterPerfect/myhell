@@ -11,7 +11,8 @@ enum unclosed_type
 	double_quote = (int)'"', // "
 	single_quote = (int)'\'', // '
 	grave_accent = (int)'`',  // `
-	pipe_sym = (int)'|'
+	pipe_sym = (int)'|',
+	slash = '\\'
 };
 
 inline void trim_end(std::string &str)
@@ -49,9 +50,9 @@ inline bool is_char_quote(char ch)
 //class CommandLine
 //{
 //	std::array<char, 3> quotes{{'"', '\'', '`'}};
-	void parse_unfinished_pipe();
 	//std::pair<unclosed_type, bool> determine_unclosed_quote(std::string, unclosed_type);
+	void main_shell_loop();
 	unclosed_type determine_unclosed_quote(std::string, unclosed_type);
-	void parse();
-	std::string parse_unclosed_quote(unclosed_type);
+	std::string get_single_command();
+	std::vector<std::string> split_cmd(std::string);
 //}
