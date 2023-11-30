@@ -15,6 +15,12 @@ enum unclosed_type
 	slash = '\\'
 };
 
+inline void trim_begin(std::string &str)
+{
+	str.erase(str.begin(), std::find_if(str.begin(), str.end(), 
+				[](char c){ return !isspace(c);}));
+}
+
 inline void trim_end(std::string &str)
 {
 	str.erase(std::find_if(str.rbegin(), str.rend(), 
@@ -24,8 +30,7 @@ inline void trim_end(std::string &str)
 inline void trim(std::string &str)
 {
 	// trim beginning
-	str.erase(str.begin(), std::find_if(str.begin(), str.end(), 
-				[](char c){ return !isspace(c);}));
+	trim_begin(str);
 	// trim ending
 	trim_end(str);
 };
@@ -38,7 +43,7 @@ inline bool is_potentially_unclosed(std::string str)
 	return false;
 }
 
-inline bool is_char_quote(char ch)
+inline bool is_quote(char ch)
 {
 	for(const char *c=QUOTES; c<=QUOTES+2; c++)
 		if(*c == ch)
@@ -46,13 +51,7 @@ inline bool is_char_quote(char ch)
 	return false;
 }
 
-
-//class CommandLine
-//{
-//	std::array<char, 3> quotes{{'"', '\'', '`'}};
-	//std::pair<unclosed_type, bool> determine_unclosed_quote(std::string, unclosed_type);
-	void main_shell_loop();
-	unclosed_type determine_unclosed_quote(std::string, unclosed_type);
-	std::string get_single_command();
-	std::vector<std::string> split_cmd(std::string);
-//}
+void main_shell_loop();
+unclosed_type determine_unclosed_quote(std::string, unclosed_type);
+std::string get_single_command();
+std::vector<std::string> split_cmd(std::string);
