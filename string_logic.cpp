@@ -1,15 +1,6 @@
 #include "string_logic.h"
 #include <iostream>
 
-void main_shell_loop()
-{
-	while(1)
-	{
-		std::string s = get_single_command();
-		auto arguments = split_cmd(s);
-	}
-}
-
 #define DEBUG_QTYPE(q) std::cout << #q << " " << q << "\n";
 std::string get_single_command()
 {
@@ -39,10 +30,22 @@ std::string get_single_command()
 	return complete_line;
 }
 
-// Streams '<' and '>' 
-std::vector<std::string> split_cmd(std::string cmd)
+atomic_argument* new_arg(std::string s, bool op)
 {
-	std::vector<std::string> ret;
+	return new atomic_argument{s, op};	
+}
+
+void free_args(std::vector<atomic_argument*> v)
+{
+	for(auto &i : v)
+		delete i;
+}
+
+std::vector<atomic_argument*> split_cmd(std::string cmd)
+//std::vector<std::string> split_cmd(std::string cmd)
+{
+	std::vector<atomic_argument*> ret;
+	//std::vector<std::string> ret;
 	bool slashed = false;
 	unclosed_type quoted = none_quote;
 	size_t start = 0;
@@ -81,7 +84,8 @@ std::vector<std::string> split_cmd(std::string cmd)
 				{
 					if(!arg.empty())
 					{
-						ret.push_back(arg);
+						ret.push_back(new_arg(arg, true));
+						//ret.push_back(arg);
 						arg.clear();
 					}
 					while(i<cmd.size() && isspace(cmd[i])) i++;
@@ -89,17 +93,30 @@ std::vector<std::string> split_cmd(std::string cmd)
 				}
 				else if(is_quote(cmd[i]))
 					quoted = (unclosed_type)cmd[i];
-				else if(cmd[i] == '|')
+				else 
 				{
-					if(!arg.empty())
+					switch(cmd[i])
 					{
-						ret.push_back(arg);
-						arg.clear();
+					case '|':
+					case '<':
+					case '>':
+					{
+						if(!arg.empty())
+						{
+							ret.push_back(new_arg(arg, true));
+							//ret.push_back(arg);
+							arg.clear();
+						}
+						std::string buf;
+						buf.push_back(cmd[i]);
+						ret.push_back(new_arg(buf, false));
+						//ret.push_back(buf);	
+						break;
 					}
-					ret.push_back(std::string("|"));	
+					default:
+						arg += cmd[i];
+					}
 				}
-				else
-					arg += cmd[i];
 			}
 			else // quoted string
 			{
@@ -116,7 +133,6 @@ std::vector<std::string> split_cmd(std::string cmd)
 unclosed_type determine_unclosed_quote(std::string line, unclosed_type old) 
 {
 	unclosed_type info = old;
-	bool pipe = false;
 	bool old_closed = old ? false: true;
 	bool slashed = false;
 	for(char &c: line)
@@ -149,19 +165,12 @@ unclosed_type determine_unclosed_quote(std::string line, unclosed_type old)
 			else if(info == c)
 				info = none_quote;	
 		}
-		else if(c == '|' && info == none_quote)
-			pipe = true;
 		else if(c == '\\')
 			slashed = true;
 
 	}
 	trim_end(line); // <-- trim_end should return string so i'll be able to use it in if statement
-	if(info == none_quote)
-	{
-		if((char)*(line.end()-1) == '|')
-			info = pipe_sym;
-		else if((char)*(line.end()-1) == '\\')
+	if(info == none_quote && (char)*(line.end()-1) == '\\')
 			info = slash;
-	}
 	return old_closed ? info: old;
 }
