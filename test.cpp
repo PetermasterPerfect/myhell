@@ -1,4 +1,4 @@
-#include "string_logic.h"
+#include "interpreter.h"
 #include <iostream>
 
 int main()
@@ -11,8 +11,13 @@ int main()
 		//std::cout << s;
 		//std::cout << "----------\n" << std::endl;
 		auto v = split_cmd(s);
-		std::cout << "v.size " << v.size() << "\n";
-		for(int i=0; i<v.size(); i++)
-			std::cout << "i=" << i << " " << v[i] << "\n";
+		Interpreter interp;
+		interp.order_arguments(v);
+		interp.print_ordered_cmd();
+		std::cout << "arguments len " << v.size() << "\n";
+		interp.run_cmd();
+		//for(int i=0; i<v.size(); i++)
+		//	std::cout << "i=" << i << " " << v[i]->str << " , " << v[i]->operand << "\n";
+		free_args(v);
 	}
 }

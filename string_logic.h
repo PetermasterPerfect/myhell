@@ -5,6 +5,10 @@
 #include <iostream>
 #define QUOTES "\"'`\0"
 
+/*
+ *TODO:ctr-d doesnt work
+ */
+
 enum unclosed_type
 {
 	none_quote, // special use
@@ -13,6 +17,12 @@ enum unclosed_type
 	grave_accent = (int)'`',  // `
 	pipe_sym = (int)'|',
 	slash = '\\'
+};
+
+struct atomic_argument
+{
+	std::string str;
+	bool operand;
 };
 
 inline void trim_begin(std::string &str)
@@ -35,14 +45,6 @@ inline void trim(std::string &str)
 	trim_end(str);
 };
 
-inline bool is_potentially_unclosed(std::string str)
-{
-	for(const char *c=QUOTES; c<=QUOTES+2; c++)
-		if(str.find(*c) != std::string::npos)
-			return true;
-	return false;
-}
-
 inline bool is_quote(char ch)
 {
 	for(const char *c=QUOTES; c<=QUOTES+2; c++)
@@ -51,7 +53,11 @@ inline bool is_quote(char ch)
 	return false;
 }
 
-void main_shell_loop();
+atomic_argument* new_arg(std::string, bool);
+void free_args(std::vector<atomic_argument*>);
+
 unclosed_type determine_unclosed_quote(std::string, unclosed_type);
 std::string get_single_command();
-std::vector<std::string> split_cmd(std::string);
+//std::vector<std::string> split_cmd(std::string);
+std::vector<atomic_argument*> split_cmd(std::string cmd);
+

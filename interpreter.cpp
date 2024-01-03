@@ -85,9 +85,19 @@ void Interpreter::run_cmd()
 {
 	atomic_cmd *master = nullptr;
 	atomic_cmd *slave = nullptr;
-	//int *pipes[2] = new int[ordered_cmd.size()];
-	std::vector<int[2]> cmd_pipes(ordered_cmd.size()-1);
-	std::vector<pid_t> child(ordered_cmd.size());
+	std::vector<int*> cmd_pipes; // TODO: free cmd_pipes or replace new operator
+	std::vector<pid_t> child;
+	if(ordered_cmd.size() <= 1)
+	{
+		cmd_pipes.resize(1);
+		cmd_pipes[0] = new int[2];
+	}
+	else
+	{
+		cmd_pipes.resize(ordered_cmd.size()-1);
+		for(int i=0; i<cmd_pipes.size(); i++)
+			cmd_pipes[i] = new int[2];
+	}
 	for(int i=0; i<cmd_pipes.size(); i++)
 		if(pipe(cmd_pipes[i]) == -1)
 		{
@@ -98,8 +108,8 @@ void Interpreter::run_cmd()
 	for(size_t i=0; i<ordered_cmd.size(); i++)
 	{
 		auto cmd = &ordered_cmd[i];
-		
-		if(child[i]=fork() == -1)
+		child.push_back(fork());	
+		if(child[i] == -1)
 		{
 			fprintf(stderr, "pipe error\n");
 			return;
@@ -147,11 +157,13 @@ void Interpreter::run_cmd()
 					fprintf(stderr, "not output file\n");
 					return;
 				}
-				write_file = open(cmd->redirect_in.c_str(), O_WRONLY);
+				write_file = open(cmd->redirect_out.c_str(), O_WRONLY|O_CREAT, 0644);
+				if(write_file == -1)
+					fprintf(stderr, "open failed: %s\n", strerror(errno));
 				dup2(write_file, 1);
 			}
-			else
-				dup2(cmd_pipes[i][1], 1);
+			//else
+			//	dup2(cmd_pipes[i][1], 1);
 
 			const char *pathname = cmd->argv[0].c_str();
 			const char **arguments = new const char*[cmd->argv.size()];
@@ -160,14 +172,16 @@ void Interpreter::run_cmd()
 				fprintf(stderr, "no memory\n");
 				return;
 			}
-			for(size_t it=1; it<cmd->argv.size(); it++)
+			for(size_t it=0; it<cmd->argv.size(); it++)
 				arguments[it] = cmd->argv[it].c_str();
-			arguments[cmd->argv.size()-1] = 0;
+			//arguments[cmd->argv.size()] = 0;
 
 			execve(pathname, (char* const*)arguments, NULL);
-			fprintf(stderr, "execve failed\n");
+			fprintf(stderr, "execve failed: %s\n", strerror(errno));
 			delete[] arguments;
 		}
+		else
+			puts("parent proc!!!");
 	}
 
 	//for(int j=0; j<cmd_pipes.size(); j++)

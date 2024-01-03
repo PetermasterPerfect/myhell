@@ -7,6 +7,9 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+//for debugging
+#include <errno.h>
+#include <string.h>
 #include "string_logic.h"
 
 namespace fs = std::filesystem;

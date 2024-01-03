@@ -1,5 +1,4 @@
 #include "string_logic.h"
-#include <iostream>
 
 #define DEBUG_QTYPE(q) std::cout << #q << " " << q << "\n";
 std::string get_single_command()
