@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <dirent.h>
 //for debugging
 #include <errno.h>
 #include <string.h>
@@ -32,15 +33,18 @@ struct atomic_cmd
 
 class Interpreter
 {
-	fs::path cwd;
 	std::vector<atomic_cmd> ordered_cmd;
+	std::array<std::string, 2> builtin_cmd{"ls", "cd"};
 	finish_status finish;
 
 	void set_finish_stat(int, std::string);
 
 public:
 	void run_cmd();
+	void run_builtin_cmd(atomic_cmd*);
+	void run_ls(std::string);
 	void print_ordered_cmd();
+	void print_errno_info();
 	void order_arguments(std::vector<atomic_argument*>);
 	Interpreter();
 };

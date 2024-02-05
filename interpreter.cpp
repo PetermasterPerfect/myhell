@@ -9,7 +9,6 @@ void atomic_cmd::reset()
 
 Interpreter::Interpreter()
 {
-	cwd = fs::current_path();
 }
 
 void Interpreter::set_finish_stat(int st, std::string in)
@@ -132,7 +131,7 @@ void Interpreter::run_cmd()
 				for(int j=0; j<cmd_pipes.size(); j++)
 				{
 					close(cmd_pipes[j][1]);
-					if(j != i)
+					if(j-1 == i)
 						close(cmd_pipes[j][0]);
 				}
 			}
@@ -176,8 +175,13 @@ void Interpreter::run_cmd()
 				arguments[it] = cmd->argv[it].c_str();
 			//arguments[cmd->argv.size()] = 0;
 
-			execve(pathname, (char* const*)arguments, NULL);
-			fprintf(stderr, "execve failed: %s\n", strerror(errno));
+			if(std::find(builtin_cmd.begin(), builtin_cmd.end(), cmd->argv[0]) != builtin_cmd.end())
+				run_builtin_cmd(cmd);
+			else
+			{
+				execve(pathname, (char* const*)arguments, NULL);
+				fprintf(stderr, "execve failed: %s\n", strerror(errno));
+			}
 			delete[] arguments;
 		}
 		else
@@ -192,5 +196,63 @@ void Interpreter::run_cmd()
 	}
 	for(auto& c: child)
 		waitpid(c, NULL, 0); 
+}
+
+
+void Interpreter::run_builtin_cmd(atomic_cmd *cmd)
+{
+	auto &arg = cmd->argv;
+	if(arg[0] == "ls")
+	{
+		std::string dir;
+		if(arg.size() == 1)
+			dir = "./";
+		else
+			dir = arg[1];
+		run_ls(dir);
+	}
+	else if(arg[0] == "cd")
+	{
+		if(arg.size() == 1)
+		{
+			std::cerr << "cd expectes 1 argument\n";
+			return;
+		}
+		else if(arg.size() > 2)
+		{
+			std::cerr << "cd expectes 1 argument, too many arguments given\n";
+			return;
+		}
+		//run_cd(arg[1]);
+	}
+}
+void Interpreter::print_errno_info()
+{
+	switch(errno)
+	{
+		case EPERM:
+			std::cerr << "Operation not permitted\n";
+			break;
+		case ENOENT:
+			std::cerr << "No such file or directory\n";
+			break;
+	}
+}
+void Interpreter::run_ls(std::string dir_path)
+{
+	DIR *dir = opendir(dir_path.c_str());
+	dirent *entry;
+
+	if(dir == NULL)
+	{
+		print_errno_info();
+		exit(errno);
+	}
+
+    while ((entry = readdir(dir)) != NULL)
+		std::cout << entry->d_name << "\n";
+    
+    closedir(dir);
+	exit(0);
 }
 
