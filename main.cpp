@@ -13,7 +13,7 @@ int main()
 		auto v = split_cmd(s);
 		Interpreter interp;
 		interp.order_arguments(v);
-		interp.print_ordered_cmd();
+		interp.print_present_cmd();
 		std::cout << "arguments len " << v.size() << "\n";
 		interp.run_cmd();
 		//for(int i=0; i<v.size(); i++)
