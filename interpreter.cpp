@@ -5,6 +5,8 @@ void atomic_cmd::reset()
 	argv.clear();
 	redirect_in.clear();
 	redirect_out.clear();
+	in = false;
+	out = false;
 }
 
 Interpreter::Interpreter()
@@ -63,7 +65,6 @@ void Interpreter::order_arguments(std::vector<atomic_argument*> original_cmd)
 	//std::reverse(present_cmd.begin(), present_cmd.end());
 }
 
-
 void Interpreter::print_present_cmd()
 {
 	for(auto &s: present_cmd)
@@ -84,21 +85,21 @@ void Interpreter::run_cmd()
 {
     atomic_cmd *master = nullptr;
     atomic_cmd *slave = nullptr;
-    std::vector<int*> cmd_pipes; // TODO: free cmd_pipes or replace new operator
+    std::vector<int*> pipes; // TODO: free pipes or replace new operator
     std::vector<pid_t> child;
     if(present_cmd.size() <= 1)
     {
-        cmd_pipes.resize(1);
-        cmd_pipes[0] = new int[2];
+        pipes.resize(1);
+        pipes[0] = new int[2];
     }
     else
     {
-        cmd_pipes.resize(present_cmd.size()-1);
-        for(size_t i=0; i<cmd_pipes.size(); i++)
-            cmd_pipes[i] = new int[2];
+        pipes.resize(present_cmd.size()-1);
+        for(size_t i=0; i<pipes.size(); i++)
+            pipes[i] = new int[2];
     }
-    for(size_t i=0; i<cmd_pipes.size(); i++)
-        if(pipe(cmd_pipes[i]) == -1)
+    for(size_t i=0; i<pipes.size(); i++)
+        if(pipe(pipes[i]) == -1)
         {
             std::cerr << "pipe error\n";
             return;
@@ -110,50 +111,70 @@ void Interpreter::run_cmd()
         child.push_back(fork());    
         if(child[i] == -1)
         {
-            std::cerr << "pipe error\n";
+            std::cerr << "fork error\n";
             return;
         }
 
         if(child[i] == 0)
         {
+			//std::cout << "arg: " << cmd->argv[0] << std::endl;
             int read_file, write_file;
-            if(i == 0)
-            {
-                close(cmd_pipes[0][0]);
-                for(size_t j=1; j<cmd_pipes.size(); j++)
-                {
-                    close(cmd_pipes[j][0]);
-                    close(cmd_pipes[j][1]);
-                }
-            }
-            else
-            {
-                for(size_t j=0; j<cmd_pipes.size(); j++)
-                {
-                    close(cmd_pipes[j][1]);
-                    if(j-1 == i)
-                        close(cmd_pipes[j][0]);
-                }
-            }
+			if(present_cmd.size() > 1)
+			{
+				if(i == 0)
+				{
+					//close(pipes[0][0]);
+					dup2(pipes[0][1], 1);
+					//close(pipes[0][1]);
+					for(size_t j=0; j<pipes.size(); j++)
+					{
+						close(pipes[j][0]);
+						close(pipes[j][1]);
+					}
+				}
+				else if(i == present_cmd.size()-1)
+				{
+//					close(pipes[i-1][1]);
+					dup2(pipes[i-1][0], 0);
+//					close(pipes[i-1][0]);
+					for(size_t j=0; j<pipes.size(); j++)
+					{
+						close(pipes[j][0]);
+						close(pipes[j][1]);
+					}
+				}
+				else
+				{
+					dup2(pipes[i-1][0], 0);
+					dup2(pipes[i][1], 1);
+					//close(pipes[i-1][0]);
+					//close(pipes[i][1]);
 
+					for(size_t j=0; j<pipes.size(); j++)
+					{
+						close(pipes[j][0]);
+						close(pipes[j][1]);
+					}
+				}
+			}
             if(cmd->in)
             {
                 if(cmd->redirect_in.empty())
                 {
-                    std::cerr << "not input file\n";
+                    std::cerr << "no input file\n";
                     return;
                 }
                 read_file = open(cmd->redirect_in.c_str(), O_RDONLY);
                 dup2(read_file, 0);
             }
-            else if(i)
-                dup2(cmd_pipes[i-1][0], 0); 
+            //else if(i)
+            //    dup2(pipes[i-1][0], 0); 
 
             if(cmd->out)
             {
                 if(cmd->redirect_out.empty())
                 {
-                    std::cerr << "not output file\n";
+                    std::cerr << "no output file\n";
                     return;
                 }
                 write_file = open(cmd->redirect_out.c_str(), O_WRONLY|O_CREAT, 0644);
@@ -161,19 +182,19 @@ void Interpreter::run_cmd()
                     std::cerr << "open failed: " << strerror(errno) << "\n";
                 dup2(write_file, 1);
             }
-            //else
-            //  dup2(cmd_pipes[i][1], 1);
+			//else if(present_cmd.size()-i > 1)
+            //  dup2(pipes[i][1], 1);
 
             const char *pathname = cmd->argv[0].c_str();
-            const char **arguments = new const char*[cmd->argv.size()];
+            const char **arguments = new const char*[cmd->argv.size()+1];
             if(arguments == nullptr)
             {
                 std::cerr << "no memory\n";
                 return;
             }
-            for(size_t it=0; it<cmd->argv.size(); it++)
-                arguments[it] = cmd->argv[it].c_str();
-            //arguments[cmd->argv.size()] = 0;
+            for(size_t k=0; k<cmd->argv.size(); k++)
+                arguments[k] = cmd->argv[k].c_str();
+            arguments[cmd->argv.size()] = 0;
 
             if(std::find(builtin_cmd.begin(), builtin_cmd.end(), cmd->argv[0]) != builtin_cmd.end())
                 run_builtin_cmd(cmd);
@@ -184,12 +205,11 @@ void Interpreter::run_cmd()
             }
             delete[] arguments;
         }
-        else
-            std::cout << "parent proc!!!\n";
+
     }
 
-    //for(int j=0; j<cmd_pipes.size(); j++)
-    for(auto& pipe: cmd_pipes)
+    //for(int j=0; j<pipes.size(); j++)
+    for(auto& pipe: pipes)
     {
         close(pipe[0]);
         close(pipe[1]);

@@ -1,6 +1,6 @@
 CXX=g++
-CFLAGS=-Wall -Wextra -g
-SOURCES=main.cpp interpreter.cpp string_logic.cpp
 TARGET=myhell
+CFLAGS=-Wall -Wextra -g -o $(TARGET)
+SOURCES=main.cpp interpreter.cpp string_logic.cpp
 $(TARGET):
 	$(CXX) $(CFLAGS) $(SOURCES)
