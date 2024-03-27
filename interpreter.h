@@ -34,17 +34,16 @@ struct atomic_cmd
 class Interpreter
 {
 	std::vector<atomic_cmd> present_cmd;
-	std::array<std::string, 2> builtin_cmd{"ls", "cd"};
-	finish_status finish;
-
-	void set_finish_stat(int, std::string);
+	std::array<std::string, 2> builtin_cmd{"exit", "cd"};
+	std::vector<std::string> path_base = {"/usr/bin/", "/usr/sbin/"};// TODO: this is only temporary solution for testing
 
 public:
 	void run_cmd();
 	void run_builtin_cmd(atomic_cmd*);
-	void run_ls(std::string);
+	void run_cd(std::string);
 	void print_present_cmd();
 	void print_errno_info();
 	void order_arguments(std::vector<atomic_argument*>);
+	bool search_for_file(std::string, std::string);
 	Interpreter();
 };

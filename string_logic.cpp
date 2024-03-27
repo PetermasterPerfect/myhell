@@ -47,7 +47,6 @@ std::vector<atomic_argument*> split_cmd(std::string cmd)
 	//std::vector<std::string> ret;
 	bool slashed = false;
 	unclosed_type quoted = none_quote;
-	size_t start = 0;
 	std::string arg;
 
 	trim_begin(cmd);
