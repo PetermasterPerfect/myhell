@@ -1,7 +1,7 @@
 #include "string_logic.h"
 
 #define DEBUG_QTYPE(q) std::cout << #q << " " << q << "\n";
-std::string get_single_command()
+std::string read_command()
 {
 	std::string complete_line;
 	unclosed_type new_qtype = none_quote;
@@ -11,7 +11,7 @@ std::string get_single_command()
 		std::string line;
 		if(first)
 		{
-			std::cout << "$ ";
+			std::cout << "\U0001F525 ";
 			first = false;
 		}
 		else
@@ -21,6 +21,11 @@ std::string get_single_command()
 			std::cout << "> ";
 		}
 		std::getline(std::cin, line);
+		if(std::cin.eof())
+		{
+			std::cout << "Exit.\n";
+			exit(0);
+		}
 
 		new_qtype = determine_unclosed_quote(line, new_qtype);
 		//DEBUG_QTYPE(new_qtype);	
@@ -41,10 +46,8 @@ void free_args(std::vector<atomic_argument*> v)
 }
 
 std::vector<atomic_argument*> split_cmd(std::string cmd)
-//std::vector<std::string> split_cmd(std::string cmd)
 {
 	std::vector<atomic_argument*> ret;
-	//std::vector<std::string> ret;
 	bool slashed = false;
 	unclosed_type quoted = none_quote;
 	std::string arg;
@@ -83,7 +86,6 @@ std::vector<atomic_argument*> split_cmd(std::string cmd)
 					if(!arg.empty())
 					{
 						ret.push_back(new_arg(arg, true));
-						//ret.push_back(arg);
 						arg.clear();
 					}
 					while(i<cmd.size() && isspace(cmd[i])) i++;
@@ -102,13 +104,11 @@ std::vector<atomic_argument*> split_cmd(std::string cmd)
 						if(!arg.empty())
 						{
 							ret.push_back(new_arg(arg, true));
-							//ret.push_back(arg);
 							arg.clear();
 						}
 						std::string buf;
 						buf.push_back(cmd[i]);
 						ret.push_back(new_arg(buf, false));
-						//ret.push_back(buf);	
 						break;
 					}
 					default:
@@ -167,7 +167,7 @@ unclosed_type determine_unclosed_quote(std::string line, unclosed_type old)
 			slashed = true;
 
 	}
-	trim_end(line); // <-- trim_end should return string so i'll be able to use it in if statement
+	trim_end(line);
 	if(info == none_quote && (char)*(line.end()-1) == '\\')
 			info = slash;
 	return old_closed ? info: old;

@@ -75,10 +75,8 @@ void Interpreter::print_present_cmd()
 	}
 }
 
-void Interpreter::run_cmd()
+void Interpreter::execute_cmd()
 {
-    atomic_cmd *master = nullptr;
-    atomic_cmd *slave = nullptr;
     std::vector<int*> pipes; // TODO: free pipes or replace new operator
     std::vector<pid_t> child;
     if(present_cmd.size() <= 1)
@@ -102,6 +100,10 @@ void Interpreter::run_cmd()
     for(size_t i=0; i<present_cmd.size(); i++)
     {
         auto cmd = &present_cmd[i];
+
+	if(std::find(builtin_cmd.begin(), builtin_cmd.end(), cmd->argv[0]) != builtin_cmd.end())
+		execute_builtin_cmd(cmd);
+
         child.push_back(fork());    
         if(child[i] == -1)
         {
@@ -111,40 +113,39 @@ void Interpreter::run_cmd()
 
         if(child[i] == 0)
         {
-			//std::cout << "arg: " << cmd->argv[0] << std::endl;
             int read_file, write_file;
-			if(present_cmd.size() > 1)
-			{
-				if(i == 0)
-				{
-					dup2(pipes[0][1], 1);
-					for(size_t j=0; j<pipes.size(); j++)
-					{
-						close(pipes[j][0]);
-						close(pipes[j][1]);
-					}
-				}
-				else if(i == present_cmd.size()-1)
-				{
-					dup2(pipes[i-1][0], 0);
-					for(size_t j=0; j<pipes.size(); j++)
-					{
-						close(pipes[j][0]);
-						close(pipes[j][1]);
-					}
-				}
-				else
-				{
-					dup2(pipes[i-1][0], 0);
-					dup2(pipes[i][1], 1);
+	    if(present_cmd.size() > 1)
+	    {
+		    if(i == 0)
+		    {
+			    dup2(pipes[0][1], 1);
+			    for(size_t j=0; j<pipes.size(); j++)
+			    {
+				    close(pipes[j][0]);
+				    close(pipes[j][1]);
+			    }
+		    }
+		    else if(i == present_cmd.size()-1)
+		    {
+			    dup2(pipes[i-1][0], 0);
+			    for(size_t j=0; j<pipes.size(); j++)
+			    {
+				    close(pipes[j][0]);
+				    close(pipes[j][1]);
+			    }
+		    }
+		    else
+		    {
+			    dup2(pipes[i-1][0], 0);
+			    dup2(pipes[i][1], 1);
 
-					for(size_t j=0; j<pipes.size(); j++)
-					{
-						close(pipes[j][0]);
-						close(pipes[j][1]);
-					}
-				}
-			}
+			    for(size_t j=0; j<pipes.size(); j++)
+			    {
+				    close(pipes[j][0]);
+				    close(pipes[j][1]);
+			    }
+		    }
+	    }
             if(cmd->in)
             {
                 if(cmd->redirect_in.empty())
@@ -180,22 +181,18 @@ void Interpreter::run_cmd()
                 arguments[k] = cmd->argv[k].c_str();
             arguments[cmd->argv.size()] = 0;
 
-			for(auto& s : path_base)// feature equivalent to PATH variable
-			{
-				if(search_for_file(s, cmd->argv[0]))
-				{
-					std::string temp = s+cmd->argv[0];
-					pathname = temp.c_str();
-				}
-			}
+	    for(auto& s : path_base)// feature equivalent to PATH variable
+	    {
+		    if(search_for_file(s, cmd->argv[0]))
+		    {
+			    std::string temp = s+cmd->argv[0];
+			    pathname = temp.c_str();
+		    }
+	    }
 
-            if(std::find(builtin_cmd.begin(), builtin_cmd.end(), cmd->argv[0]) != builtin_cmd.end())
-				run_builtin_cmd(cmd);
-			else
-            {
-                execve(pathname, (char* const*)arguments, NULL);
-                std::cerr << "execve failed: " << strerror(errno) << "\n";
-            }
+
+	    execve(pathname, (char* const*)arguments, NULL);
+	    std::cerr << "execve failed: " << strerror(errno) << "\n";
             delete[] arguments;
         }
 
@@ -210,7 +207,7 @@ void Interpreter::run_cmd()
         waitpid(c, NULL, 0); 
 }
 
-void Interpreter::run_builtin_cmd(atomic_cmd *cmd)
+void Interpreter::execute_builtin_cmd(atomic_cmd *cmd)
 {
 	auto &arg = cmd->argv;
 	if(arg[0] == "exit")
@@ -229,75 +226,75 @@ void Interpreter::run_builtin_cmd(atomic_cmd *cmd)
 			std::cerr << "cd too many arguments \n";
 			return;
 		}
-		run_cd(arg[1]);
+		execute_cd(arg[1]);
 	}
 	//print_errno_info(); TODO: error printing
 }
-void Interpreter::print_errno_info()
+void Interpreter::print_errno_info()//TODO: add rest of errors
 {
-	switch(errno)
-	{
+    switch(errno)
+    {
 
-        case EACCES:
-            std::cerr << "Search permission is denied for one of the components of path." << std::endl;
-            break;
-        case EFAULT:
-            std::cerr << "path points outside your accessible address space." << std::endl;
-            break;
-        case EIO:
-            std::cerr << "An I/O error occurred." << std::endl;
-            break;
-        case ELOOP:
-            std::cerr << "Too many symbolic links were encountered in resolving path." << std::endl;
-            break;
-        case ENAMETOOLONG:
-            std::cerr << "path is too long." << std::endl;
-            break;
-        case ENOENT:
-            std::cerr << "The file does not exist." << std::endl;
-            break;
-        case ENOMEM:
-            std::cerr << "Insufficient kernel memory was available." << std::endl;
-            break;
-        case ENOTDIR:
-            std::cerr << "A component of path is not a directory." << std::endl;
-            break;
-        case EBADF:
-            std::cerr << "fd is not a valid file descriptor." << std::endl;
-            break;
-        default:
-            std::cerr << "Unknown error code: " << errno << std::endl;
-            break;
+    case EACCES:
+	std::cerr << "Search permission is denied for one of the components of path." << std::endl;
+	break;
+    case EFAULT:
+	std::cerr << "path points outside your accessible address space." << std::endl;
+	break;
+    case EIO:
+	std::cerr << "An I/O error occurred." << std::endl;
+	break;
+    case ELOOP:
+	std::cerr << "Too many symbolic links were encountered in resolving path." << std::endl;
+	break;
+    case ENAMETOOLONG:
+	std::cerr << "path is too long." << std::endl;
+	break;
+    case ENOENT:
+	std::cerr << "The file does not exist." << std::endl;
+	break;
+    case ENOMEM:
+	std::cerr << "Insufficient kernel memory was available." << std::endl;
+	break;
+    case ENOTDIR:
+	std::cerr << "A component of path is not a directory." << std::endl;
+	break;
+    case EBADF:
+	std::cerr << "fd is not a valid file descriptor." << std::endl;
+	break;
+    default:
+	std::cerr << "Unknown error code: " << errno << std::endl;
+	break;
 
-	}
+    }
 }
 
 bool Interpreter::search_for_file(std::string dir_path, std::string file)
 {
-	DIR *dir = opendir(dir_path.c_str());
-	dirent *entry;
+    DIR *dir = opendir(dir_path.c_str());
+    dirent *entry;
 
-	if(dir == NULL)
-	{
-		print_errno_info();
-		exit(errno);
-	}
+    if(dir == NULL)
+    {
+	    print_errno_info();
+	    exit(errno);
+    }
 
     while ((entry = readdir(dir)) != NULL)
+    {
+	if(file == entry->d_name)
 	{
-		if(file == entry->d_name)
-		{
-			closedir(dir);
-			return true;
-		}
+		closedir(dir);
+		return true;
 	}
+    }
     
     closedir(dir);
 	return false;
 }
 
-void Interpreter::run_cd(std::string dir_path)
+void Interpreter::execute_cd(std::string dir_path)
 {
-	chdir(dir_path.c_str());
+    chdir(dir_path.c_str());
 }
 

@@ -39,9 +39,7 @@ inline void trim_end(std::string &str)
 
 inline void trim(std::string &str)
 {
-	// trim beginning
 	trim_begin(str);
-	// trim ending
 	trim_end(str);
 };
 
@@ -57,7 +55,7 @@ atomic_argument* new_arg(std::string, bool);
 void free_args(std::vector<atomic_argument*>);
 
 unclosed_type determine_unclosed_quote(std::string, unclosed_type);
-std::string get_single_command();
+std::string read_command();
 //std::vector<std::string> split_cmd(std::string);
 std::vector<atomic_argument*> split_cmd(std::string cmd);
 

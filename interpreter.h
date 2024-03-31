@@ -1,7 +1,6 @@
 #include <vector>
 #include <algorithm>
 #include <string>
-#include <filesystem>
 #include <functional>
 #include <unistd.h>
 #include <fcntl.h>
@@ -13,13 +12,6 @@
 #include <string.h>
 #include "string_logic.h"
 
-namespace fs = std::filesystem;
-
-struct finish_status
-{
-	int status;
-	std::string info;
-};
 
 struct atomic_cmd
 {
@@ -38,9 +30,9 @@ class Interpreter
 	std::vector<std::string> path_base = {"/usr/bin/", "/usr/sbin/"};// TODO: this is only temporary solution for testing
 
 public:
-	void run_cmd();
-	void run_builtin_cmd(atomic_cmd*);
-	void run_cd(std::string);
+	void execute_cmd();
+	void execute_builtin_cmd(atomic_cmd*);
+	void execute_cd(std::string);
 	void print_present_cmd();
 	void print_errno_info();
 	void order_arguments(std::vector<atomic_argument*>);
