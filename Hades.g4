@@ -1,5 +1,5 @@
 grammar Hades;
-program:(blockContent | functionDefinition)*; 
+program:(blockContent | functionDefinition)* ; 
 
 functionDefinition: WS? FUNC WS? ALPHANUMERIC WS? codeBlock;
 
@@ -8,23 +8,16 @@ ifStatement: WS? 'if ' conditionBlock codeBlock elseIfStatement* elseStatement?;
 elseIfStatement: WS? 'elseif ' conditionBlock codeBlock;
 elseStatement: WS? 'else ' codeBlock;
 
+conditionBlock: WS? '[' WS? conditionContent* WS? ']' WS?;
 
-conditionBlock: closedConditionBlock | unclosedConditionBlock;
-closedConditionBlock: WS? '[' WS? conditionContent* WS? ']' WS?;
-unclosedConditionBlock: WS? '[' conditionContent*;
+codeBlock: NL? WS? '{' WS? blockContent (WS | NL)* '}' WS? SEPARATOR? NL?;
 
-codeBlock: NL? (closedCodeBlock | unclosedCodeBlock) NL?;
-closedCodeBlock: WS? '{' WS? blockContent* WS? NL? '}' WS? SEPARATOR?;
-unclosedCodeBlock: '{' blockContent*;
-
-blockContent: NL? (sentences | whileLoop | ifStatement);
+blockContent: (NL? (sentences | whileLoop | ifStatement))+;
 conditionContent: pipe|sentence;
 
 sentences: (pipe|sentence) (SEPARATOR+ (pipe|sentence))* SEPARATOR*;
 
-//TODO: unlosed pipe action
 pipe: sentence PIPE sentence (PIPE sentence)*;
-
 
 sentence: (WS? words WS?)+
 	| assignments;
@@ -32,8 +25,7 @@ sentence: (WS? words WS?)+
 assignments: (WS? assignment WS?)+;
 
 unclosedPipe: word PIPE;
-assignment: varName ASSIGN word+;// word+ or words???
-
+assignment: varName ASSIGN word+;
 varName: ALPHANUMERIC;
 
 //TODO: unlosed words action
@@ -61,7 +53,6 @@ ALPHANUMERIC: [a-zA-Z0-9]+;
 VAR: DOLLAR ALPHANUMERIC;
 
 RAW_STRING: (STRING_ESCAPE | ~[ <>()$=|\t\r\n'";])+;
-//fragment NEWLINE_ESCAPE: '\\'[\r\n];
 STRING_ESCAPE: '\\'.;
 
 QUOTED_STRING: '\'' (STRING_ESCAPE | ~[\\'])* '\''
