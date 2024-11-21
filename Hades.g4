@@ -1,63 +1,48 @@
 grammar Hades;
+
 program:(blockContent | functionDefinition)* ; 
 
-functionDefinition: WS? FUNC WS? ALPHANUMERIC WS? codeBlock;
+functionDefinition: FUNC ALPHANUMERIC codeBlock;
 
-whileLoop: WS? 'while ' conditionBlock codeBlock;
-ifStatement: WS? 'if ' conditionBlock codeBlock elseIfStatement* elseStatement?;
-elseIfStatement: WS? 'elseif ' conditionBlock codeBlock;
-elseStatement: WS? 'else ' codeBlock;
+whileLoop: 'while' conditionBlock codeBlock;
+ifStatement: 'if' conditionBlock codeBlock elseIfStatement* elseStatement?;
+elseIfStatement: 'elseif' conditionBlock codeBlock;
+elseStatement: 'else' codeBlock;
 
-conditionBlock: WS? '[' WS? conditionContent* WS? ']' WS?;
+conditionBlock: NL* '[' NL* conditionContent* NL* ']' NL* ;
 
-codeBlock: NL? WS? '{' WS? blockContent (WS | NL)* '}' WS? SEPARATOR? NL?;
+codeBlock: '{' NL* blockContent* '}' (NL* SEMI? NL*)  ;
 
-blockContent: (NL? (sentences | whileLoop | ifStatement))+;
+blockContent: (sentences | whileLoop | ifStatement)+;
 conditionContent: pipe|sentence;
 
-sentences: (pipe|sentence) (SEPARATOR+ (pipe|sentence))* SEPARATOR*;
+sentences: (pipe|sentence) (SEMI? (pipe|sentence))* SEMI?;
 
 pipe: sentence PIPE sentence (PIPE sentence)*;
 
-sentence: (WS? words WS?)+
-	| assignments;
-
-assignments: (WS? assignment WS?)+;
-
-unclosedPipe: word PIPE;
-assignment: varName ASSIGN word+;
-varName: ALPHANUMERIC;
+sentence: word+;
 
 //TODO: unlosed words action
-words: word+
-	| (LESS|GREATER) WS? word+;
+word: ALPHANUMERIC | LESS | GREATER | RAW_STRING | QUOTED_STRING | UNCLOSED_QUOTED_STRING;
 
-word: (VAR | RAW_STRING | ALPHANUMERIC | QUOTED_STRING) #closedString
-	| UNCLOSED_QUOTED_STRING #unclosedQuotedString
-	;
-
-FUNC: 'func ';
+FUNC: 'func';
 
 LESS: '<';
 GREATER: '>';
 
-BRACKETS: '(' WS? ')';
-WS: [ \t]+;
-fragment SEMI: ';';
-NL: [\r\n]+;
-DOLLAR: '$';
-SEPARATOR: SEMI | NL;
+WS: [ \t]+ -> channel(2);
+SEMI: ';';
 ASSIGN: '=';
 PIPE: '|';
-ALPHANUMERIC: [a-zA-Z0-9]+;
-VAR: DOLLAR ALPHANUMERIC;
 
-RAW_STRING: (STRING_ESCAPE | ~[ <>()$=|\t\r\n'";])+;
+ALPHANUMERIC: [a-zA-Z][a-zA-Z0-9]+;
 STRING_ESCAPE: '\\'.;
 
+RAW_STRING: (STRING_ESCAPE | ~[ "'|\t\r\n;])+;
 QUOTED_STRING: '\'' (STRING_ESCAPE | ~[\\'])* '\''
 		| '"' (STRING_ESCAPE | ~[\\"])* '"';
 
 
 UNCLOSED_QUOTED_STRING: '\'' (STRING_ESCAPE | ~[\\'])*
 		| '"' (STRING_ESCAPE | ~[\\"])*;
+NL: [\r\n];

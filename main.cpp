@@ -1,31 +1,25 @@
-#include "antlr4-runtime.h"
-#include "HadesParser.h"
-#include "HadesLexer.h"
-#include "HadesParserBaseVisitor.h"
+#include "AstBuilder.h"
 #include <iostream>
-
-using namespace antlr4;
-using namespace antlr4::tree;
-
-class TestVisitor : public HadesParserBaseVisitor
-{
-
-};
-
 
 int main(int argc, char **argv)
 {
-	//while(1)
+	HadesExecutor exec;
+	while(1)
 	{
-		std::ifstream f("../test.had");
-		ANTLRInputStream input(f);
-		//ANTLRInputStream input(std::string("x=sada"));
+		std::string cmd;
+		std::getline(std::cin, cmd);
+		//std::ifstream f("../test1.had");
+		//ANTLRInputStream input(f);
+		ANTLRInputStream input(cmd);
 		HadesLexer lexer(&input);
 		CommonTokenStream tokens(&lexer);
 		HadesParser parser(&tokens);
 		
 		ParseTree *tree = parser.program();
-		TestVisitor test;
+		AstBuilder test(tokens);
 		test.visit(tree);
+		test.printAst();
+		test.getAstTree()->execute(exec);
+		
 	}
 }

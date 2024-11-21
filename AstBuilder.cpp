@@ -1,11 +1,15 @@
 #include "AstBuilder.h"
-#include <iostream>
 
-AstBuilder::AstBuilder(): astTree(std::make_shared<ProgramNode>()) {}
+AstBuilder::AstBuilder(BufferedTokenStream& t): bufferedTokens(t), astTree(std::make_shared<ProgramNode>()) {}
 
 void AstBuilder::printAst()
 {
 	astTree->print(0);
+}
+
+std::shared_ptr<ProgramNode> AstBuilder::getAstTree()
+{
+	return astTree;
 }
 
 std::any AstBuilder::visitProgram(HadesParser::ProgramContext *ctx)
@@ -34,16 +38,6 @@ std::any AstBuilder::visitFunctionDefinition(HadesParser::FunctionDefinitionCont
 	visit(ctx->codeBlock());
 	path.pop();
 
-	return std::any(1);
-}
-
-std::any AstBuilder::visitCodeBlock(HadesParser::CodeBlockContext *ctx)
-{
-	if(ctx->closedCodeBlock())
-		visit(ctx->closedCodeBlock());
-
-	if(ctx->unclosedCodeBlock())
-		std::cerr << "Unclosed code block\n";
 	return std::any(1);
 }
 
@@ -120,12 +114,21 @@ std::any AstBuilder::visitWhileLoop(HadesParser::WhileLoopContext *ctx)
 std::any AstBuilder::visitPipe(HadesParser::PipeContext *ctx)
 {
 	std::shared_ptr<ProgramNode> top = dynamic_pointer_cast<ProgramNode>(path.top());
-	top->codeNodes.push_back(std::make_shared<PipeNode>());
-	path.push(top->codeNodes.back());
+	std::shared_ptr<PipeNode> pipe = std::make_shared<PipeNode>();
+	if(!pipe)
+		return std::any(0);
+
+	top->codeNodes.push_back(pipe);
+	path.push(pipe);
 
 	auto ss = ctx->sentence();
 	for(auto s: ss)
+	{
 		visit(s);
+		size_t lastSenteceSize = pipe->sentences.back()->atomNodes.size();
+		if(!lastSenteceSize)
+			std::cerr << "Unclosed pipe\n";
+	}
 
 	path.pop();
 	return std::any(1);
@@ -135,63 +138,79 @@ std::any AstBuilder::visitSentence(HadesParser::SentenceContext *ctx)
 {
 
 	std::shared_ptr<AstNode> baseTop = path.top();
-	std::shared_ptr<ProgramNode> top;
-	if(top = std::dynamic_pointer_cast<ProgramNode>(baseTop))
+	std::shared_ptr<ProgramNode> topProgram;
+	std::shared_ptr<PipeNode> topPipe = nullptr;
+	std::shared_ptr<SentenceNode> sentence = std::make_shared<SentenceNode>();
+	if(!sentence)
+		return std::any(0);
+
+	if(topProgram = std::dynamic_pointer_cast<ProgramNode>(baseTop))
 	{
-		top->codeNodes.push_back(std::make_shared<SentenceNode>());
-		path.push(top->codeNodes.back());
+		topProgram->codeNodes.push_back(sentence);
+		path.push(topProgram->codeNodes.back());
 	}
 	else
 	{
-		std::shared_ptr<PipeNode> topPipe = dynamic_pointer_cast<PipeNode>(baseTop);
-		topPipe->sentences.push_back(std::make_shared<SentenceNode>());
+		topPipe = dynamic_pointer_cast<PipeNode>(baseTop);
+		topPipe->sentences.push_back(sentence);
 		path.push(topPipe->sentences.back());
 	}
 
-	if(ctx->assignments())
-		visit(ctx->assignments());
-	else
+	std::string sentenceWithSpaces;
+    size_t start = ctx->getStart()->getTokenIndex();
+    size_t stop = ctx->getStop()->getTokenIndex();
+	std::vector<Token*> tokList = bufferedTokens.getTokens(start, stop);
+	for(auto t: tokList)
+		sentenceWithSpaces += t->getText();
+
+	ANTLRInputStream input(sentenceWithSpaces);
+	AssignmentLexer lexer(&input);
+	CommonTokenStream tokens(&lexer);
+	AssHadesParser parser(&tokens);
+	std::shared_ptr<AssignmentErrorStrategy> handler = std::make_shared<AssignmentErrorStrategy>();
+	if(!handler)
+		return std::any(0);
+	parser.setErrorHandler(handler);
+
+	try
 	{
-		auto wordsVec = ctx->words();
-		for(auto v: wordsVec)
-			visit(v);
+		ParseTree *tree = parser.assignments();
+		AssignmentProcessor assProc(path);
+		assProc.visit(tree);
+	}
+	catch(size_t pos)
+	{
+		path.pop();
+		if(topProgram)
+		{
+			if(!sentence->atomNodes.size())
+				topProgram->codeNodes.pop_back();
+
+			topProgram->codeNodes.push_back(std::make_shared<SentenceNode>());
+			path.push(topProgram->codeNodes.back());
+		}
+		else
+		{
+			if(!sentence->atomNodes.size())
+				topPipe->sentences.pop_back();
+
+			topPipe->sentences.push_back(std::make_shared<SentenceNode>());
+			path.push(topPipe->sentences.back());
+		}
+		//TODO: poping and pushing
+		std::cout << "after substr:" << sentenceWithSpaces.substr(pos) << "\n";
+		input = ANTLRInputStream(sentenceWithSpaces.substr(pos));
+		SentenceHadesLexer lexer(&input);
+		CommonTokenStream tokens(&lexer);
+		SentenceHadesParser parser(&tokens);
+		
+		ParseTree *tree = parser.sentence();
+		SentenceProcessor sentenceProc(path);
+		sentenceProc.visit(tree);
 	}
 	path.pop();
+
 	return std::any(1);
 }
 
-std::any AstBuilder::visitAssignment(HadesParser::AssignmentContext *ctx)
-{
-	std::shared_ptr<SentenceNode> topSentence = dynamic_pointer_cast<SentenceNode>(path.top());
-	std::shared_ptr<AssignmentNode> assignmentN = std::make_shared<AssignmentNode>();
-	if(!assignmentN)
-		return std::any(0);
 
-	assignmentN->varName = ctx->varName()->getText();
-	auto wordVec = ctx->word();
-	for(auto v: wordVec)
-		assignmentN->value.push_back(v->getText());
-	topSentence->atomNodes.push_back(assignmentN);	
-	return std::any(1);
-}
-
-std::any AstBuilder::visitWords(HadesParser::WordsContext *ctx)
-{
-	std::shared_ptr<SentenceNode> topSentence = dynamic_pointer_cast<SentenceNode>(path.top());
-	//topSentence.atomNode.push_back();
-	std::shared_ptr<WordsNode> wordsN = std::make_shared<WordsNode>();
-	if(!wordsN)
-		return std::any(0);
-
-	if(ctx->LESS())
-		wordsN->fileOp = FROMFILE;
-	else if(ctx->GREATER())
-		wordsN->fileOp = TOFILE;
-	
-	auto wordVec = ctx->word();
-	for(auto v: wordVec)
-		wordsN->words.push_back(v->getText());
-
-	topSentence->atomNodes.push_back(wordsN);
-	return std::any(1);
-}

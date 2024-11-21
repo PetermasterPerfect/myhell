@@ -1,6 +1,11 @@
+#pragma once
 #include "HadesParser.h"
+//#include "HadesExecutor.h"
 #include <memory>
 #include <vector>
+#include <unordered_map>
+
+class HadesExecutor;
 
 using namespace antlr4;
 using namespace antlr4::tree;
@@ -10,6 +15,10 @@ enum NodeType {PROGRAM, FUNCTIONDEF, WORDS, ASSIGNMENT, SENTENCE, CONDITIONCODE,
 
 enum Redirection {NONE, TOFILE, FROMFILE};
 
+
+std::string processWords(std::vector<std::string>);
+bool isWordQuoted(std::string);
+
 class AstNode
 {
 public:
@@ -17,6 +26,7 @@ public:
 	AstNode(NodeType t): type(t) {}
 	virtual ~AstNode()=default;
 	virtual void print(int)=0;
+	virtual void execute(HadesExecutor&)=0;
 };
 
 class SentenceNode : public AstNode
@@ -25,17 +35,7 @@ public:
 	std::vector<std::shared_ptr<AstNode>> atomNodes;
 	SentenceNode(): AstNode(SENTENCE) {}
 	void print(int) override;
-};
-
-
-class AssignmentNode : public AstNode
-{
-public:
-	std::string varName;
-	std::vector<std::string> value;
-	AssignmentNode(): AstNode(ASSIGNMENT) {}
-	void print(int) override;
-
+	void execute(HadesExecutor&) override;
 };
 
 class WordsNode : public AstNode
@@ -45,6 +45,18 @@ public:
 	std::vector<std::string> words;
 	WordsNode(): AstNode(WORDS) {}
 	void print(int) override;
+	void execute(HadesExecutor&) override;
+};
+
+class AssignmentNode : public AstNode
+{
+public:
+	std::string varName;
+	std::vector<std::shared_ptr<WordsNode>> value;
+	AssignmentNode(): AstNode(ASSIGNMENT) {}
+	void print(int) override;
+	void execute(HadesExecutor&) override;
+
 };
 
 class PipeNode : public AstNode
@@ -53,6 +65,7 @@ public:
 	std::vector<std::shared_ptr<SentenceNode>> sentences;
 	PipeNode(): AstNode(PIPE) {}
 	void print(int) override;
+	void execute(HadesExecutor&) override;
 };
 
 class ProgramNode : public AstNode
@@ -61,6 +74,7 @@ public:
 	std::vector<std::shared_ptr<AstNode>> codeNodes;
 	ProgramNode(): AstNode(PROGRAM) {}
 	void print(int) override;
+	void execute(HadesExecutor&) override;
 
 };
 
@@ -71,6 +85,7 @@ public:
 	std::shared_ptr<ProgramNode> body;
 	FunctionDefNode(): AstNode(FUNCTIONDEF), body(std::make_shared<ProgramNode>()){}
 	void print(int) override;
+	void execute(HadesExecutor&) override;
 };
 
 class IfStatementNode : public AstNode
@@ -92,6 +107,7 @@ public:
 	}
 
 	void print(int) override;
+	void execute(HadesExecutor&) override;
 };
 
 class WhileLoopNode : public AstNode
@@ -103,5 +119,15 @@ public:
 		condition(std::make_shared<ProgramNode>()),
 		body(std::make_shared<ProgramNode>()){}
 	void print(int) override;
+	void execute(HadesExecutor&) override;
+};
+
+class HadesExecutor
+{
+public:
+	std::unordered_map<std::string, std::string> variables;
+	std::unordered_map<std::string,	std::shared_ptr<ProgramNode>> functions;
+
+	HadesExecutor(){}
 };
 
