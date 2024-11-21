@@ -197,8 +197,6 @@ std::any AstBuilder::visitSentence(HadesParser::SentenceContext *ctx)
 			topPipe->sentences.push_back(std::make_shared<SentenceNode>());
 			path.push(topPipe->sentences.back());
 		}
-		//TODO: poping and pushing
-		std::cout << "after substr:" << sentenceWithSpaces.substr(pos) << "\n";
 		input = ANTLRInputStream(sentenceWithSpaces.substr(pos));
 		SentenceHadesLexer lexer(&input);
 		CommonTokenStream tokens(&lexer);

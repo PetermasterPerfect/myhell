@@ -140,8 +140,24 @@ void SentenceNode::execute(HadesExecutor& exec)
 	std::string in;
 	for(auto atom: atomNodes)
 	{
-		if(std::dynamic_pointer_cast<AssignmentNode>(atom))
-			atom->execute(exec);
+		if(std::shared_ptr<AssignmentNode> ass = std::dynamic_pointer_cast<AssignmentNode>(atom))
+		{
+			for(auto w: ass->value)
+			{	
+				if(w->fileOp == FROMFILE)
+					in = processedWords(w->words, exec);
+				else if(w->fileOp == TOFILE)
+					out = processedWords(w->words, exec);
+				else
+					cmd.push_back(processedWords(w->words, exec));
+			}
+
+			exec.variables[ass->varName] = std::accumulate(cmd.begin(), cmd.end(), std::string(),
+					[](const std::string &acc, const std::string &str)
+					{
+						return acc+str;
+					});
+		}
 		else
 		{
 			std::shared_ptr<WordsNode> w = std::dynamic_pointer_cast<WordsNode>(atom);
@@ -156,8 +172,8 @@ void SentenceNode::execute(HadesExecutor& exec)
 	std::cout << "CMD: ";
 	for(auto c: cmd)
 		std::cout << c << " ";
-	std::cout << "\nIN: " << out << std::endl;
-	std::cout << "OUT: " << in << std::endl;
+	std::cout << "\nIN: " << in << std::endl;
+	std::cout << "OUT: " << out << std::endl;
 }
 
 void AssignmentNode::execute(HadesExecutor& exec)

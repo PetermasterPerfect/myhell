@@ -23,8 +23,6 @@ class AstBuilder : public HadesBaseVisitor
 	virtual std::any visitWhileLoop(HadesParser::WhileLoopContext *ctx) override;
 	virtual std::any visitPipe(HadesParser::PipeContext *ctx) override;
 	virtual std::any visitSentence(HadesParser::SentenceContext *ctx) override;
-	//virtual std::any visitAssignment(HadesParser::AssignmentContext *ctx) override;
-	//virtual std::any visitWords(HadesParser::WordsContext *ctx) override;
 
 public:
 	AstBuilder(BufferedTokenStream&);
