@@ -3,4 +3,6 @@ test/
 org_src/
 tags
 Session.vim
+*.swp
+*.swo
 antlr4.jar
