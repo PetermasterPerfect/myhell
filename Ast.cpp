@@ -8,7 +8,6 @@ bool isWordQuoted(std::string str)
 	return false;
 }
 
-//TODO: xxx"sdadsa'sdsad'dadsa"dsads\'"\'
 std::string processedWords(std::vector<std::string> words, HadesExecutor& exec)
 {
 	std::string processedWord;
@@ -22,7 +21,6 @@ std::string processedWords(std::vector<std::string> words, HadesExecutor& exec)
 		}
 		else
 		{
-
 			bool escaped = false;
 			if(isWordQuoted(w))
 				for(auto it=w.begin()+1; it!=w.end()-1; it++)
@@ -67,9 +65,12 @@ std::string tabs(int i)
 
 void SentenceNode::print(int i)
 {
-	std::cout << tabs(i) << "(SentenceNode)" << std::endl;
-	for(auto atom: atomNodes)
-		atom->print(i+1);
+	std::cout << tabs(i) << "(SentenceNode) " << content.size() << std::endl;
+
+	for(auto c: content)
+	{
+		c->print(i+1);
+	}
 	std::cout << std::endl;
 }
 
@@ -118,6 +119,7 @@ void IfStatementNode::print(int i)
 	for(int j=0; j<condCodeNodes.size(); j++)
 	{
 		auto c = condCodeNodes[j];
+		std::cout << tabs(i) << "(CONDCODE)" << std::endl;
 		c->print(i+1);
 	}
 	std::cout << tabs(i) << "(Else)" << std::endl;
@@ -138,9 +140,11 @@ void SentenceNode::execute(HadesExecutor& exec)
 	std::vector<std::string> cmd;
 	std::string out;
 	std::string in;
-	for(auto atom: atomNodes)
+	for(auto c: content)
 	{
-		if(std::shared_ptr<AssignmentNode> ass = std::dynamic_pointer_cast<AssignmentNode>(atom))
+		if(std::shared_ptr<SentenceNode> s = std::dynamic_pointer_cast<SentenceNode>(c))
+			s->execute(exec);
+		else if(std::shared_ptr<AssignmentNode> ass = std::dynamic_pointer_cast<AssignmentNode>(c))
 		{
 			for(auto w: ass->value)
 			{	
@@ -157,10 +161,11 @@ void SentenceNode::execute(HadesExecutor& exec)
 					{
 						return acc+str;
 					});
+			cmd.clear();
 		}
 		else
 		{
-			std::shared_ptr<WordsNode> w = std::dynamic_pointer_cast<WordsNode>(atom);
+			std::shared_ptr<WordsNode> w = std::dynamic_pointer_cast<WordsNode>(c);
 			if(w->fileOp == FROMFILE)
 				in = processedWords(w->words, exec);
 			else if(w->fileOp == TOFILE)
@@ -169,11 +174,14 @@ void SentenceNode::execute(HadesExecutor& exec)
 				cmd.push_back(processedWords(w->words, exec));
 		}
 	}
-	std::cout << "CMD: ";
-	for(auto c: cmd)
-		std::cout << c << " ";
-	std::cout << "\nIN: " << in << std::endl;
-	std::cout << "OUT: " << out << std::endl;
+	if(cmd.size())
+	{
+		std::cout << "CMD: ";
+		for(auto c: cmd)
+			std::cout << c << " ";
+		std::cout << "\nIN: " << in << std::endl;
+		std::cout << "OUT: " << out << std::endl;
+	}
 }
 
 void AssignmentNode::execute(HadesExecutor& exec)

@@ -9,23 +9,33 @@ ifStatement: 'if' conditionBlock codeBlock elseIfStatement* elseStatement?;
 elseIfStatement: 'elseif' conditionBlock codeBlock;
 elseStatement: 'else' codeBlock;
 
-conditionBlock: NL* '[' NL* conditionContent* NL* ']' NL* ;
+conditionBlock: NL* LEFTBRACKET NL* conditionContent* NL* RIGHTBRACKET NL* ;
 
-codeBlock: '{' NL* blockContent* '}' (NL* SEMI? NL*)  ;
+codeBlock: NL* LEFTCURLYBRACKET NL* blockContent* NL* RIGHTCURLYBRACKET (NL* SEMI? NL*)  ;
 
 blockContent: (sentences | whileLoop | ifStatement)+;
-conditionContent: pipe|sentence;
+conditionContent: sentence;
 
-sentences: (pipe|sentence) (SEMI? (pipe|sentence))* SEMI?;
+sentences: (sentence SEMI? NL*)+;
 
-pipe: sentence PIPE sentence (PIPE sentence)*;
+sentence: sentence PIPE NL*? sentence
+	| words PIPE NL*? words
+	| words;
 
-sentence: word+;
+//sentences: (pipe|sentence) (SEMI? NL*? (pipe|sentence))* SEMI? NL*?;
+
+//sentence: word+? SEMI? NL*?;
 
 //TODO: unlosed words action
+words: word+;
 word: ALPHANUMERIC | LESS | GREATER | RAW_STRING | QUOTED_STRING | UNCLOSED_QUOTED_STRING;
 
 FUNC: 'func';
+
+LEFTBRACKET: '[';
+RIGHTBRACKET: ']';
+LEFTCURLYBRACKET: '{';
+RIGHTCURLYBRACKET: '}';
 
 LESS: '<';
 GREATER: '>';
@@ -38,11 +48,11 @@ PIPE: '|';
 ALPHANUMERIC: [a-zA-Z][a-zA-Z0-9]+;
 STRING_ESCAPE: '\\'.;
 
-RAW_STRING: (STRING_ESCAPE | ~[ "'|\t\r\n;])+;
+RAW_STRING: (STRING_ESCAPE | ~[ \\"'|\t\r\n;])+;
 QUOTED_STRING: '\'' (STRING_ESCAPE | ~[\\'])* '\''
 		| '"' (STRING_ESCAPE | ~[\\"])* '"';
 
 
 UNCLOSED_QUOTED_STRING: '\'' (STRING_ESCAPE | ~[\\'])*
 		| '"' (STRING_ESCAPE | ~[\\"])*;
-NL: [\r\n];
+NL: [\r\n];// -> channel(2);

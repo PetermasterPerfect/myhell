@@ -33,10 +33,21 @@ public:
 class SentenceNode : public AstNode
 {
 public:
-	std::vector<std::shared_ptr<AstNode>> atomNodes;
+	/*
+	 * SentenceNode can represent 3 situations
+	 * case 1: pipe of pipes
+	 * 	content has 2 elements representing sentences
+	 * case 2: pipe of sentences
+	 * 	content has at least 2 elements which are list of words
+	 * 	it may be more in case 
+	 * case 3: normal sentece
+	 *  content has 1 element which is list of words
+	 */
+	std::vector<std::shared_ptr<AstNode>> content;
 	SentenceNode(): AstNode(SENTENCE) {}
 	void print(int) override;
 	void execute(HadesExecutor&) override;
+	bool isPipe(){ return content.size() > 1; }
 };
 
 class WordsNode : public AstNode

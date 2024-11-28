@@ -13,7 +13,7 @@ std::any AssignmentProcessor::visitAssignment(AssHadesParser::AssignmentContext 
 	for(auto w: words)
 		visit(w);
 	path.pop();
-	topSentence->atomNodes.push_back(assignmentN);	
+	topSentence->content.push_back(assignmentN);	
 	return std::any(1);
 }
 
@@ -26,7 +26,7 @@ std::any AssignmentProcessor::visitWords(AssHadesParser::WordsContext *ctx)
 		return std::any(1);
 
 	if(top = std::dynamic_pointer_cast<SentenceNode>(baseTop))
-		top->atomNodes.push_back(wordsN);
+		top->content.push_back(wordsN);
 	else
 	{
 		std::shared_ptr<AssignmentNode> topAss = dynamic_pointer_cast<AssignmentNode>(baseTop);

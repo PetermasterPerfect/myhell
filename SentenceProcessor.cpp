@@ -9,7 +9,7 @@ std::any SentenceProcessor::visitWords(SentenceHadesParser::WordsContext *ctx)
 	if(!wordsN)
 		return std::any(0);
 
-	topSentence->atomNodes.push_back(wordsN);
+	topSentence->content.push_back(wordsN);
 
 	if(ctx->LESS())
 		wordsN->fileOp = FROMFILE;
