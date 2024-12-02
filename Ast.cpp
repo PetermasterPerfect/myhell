@@ -52,9 +52,7 @@ std::string processedWords(std::vector<std::string> words, HadesExecutor& exec)
 						processedWord+=*it;
 				}
 		}
-
 	}
-
 	return processedWord;
 }
 
@@ -91,13 +89,6 @@ void WordsNode::print(int i)
 
 	for(auto w: words)
 		std::cout << tabs(i) <<  w << std::endl;
-}
-
-void PipeNode::print(int i)
-{
-	std::cout << tabs(i) << "(Pipe)" << std::endl;
-	for(auto s: sentences)
-		s->print(i+1);
 }
 
 void ProgramNode::print(int i)
@@ -137,66 +128,67 @@ void WhileLoopNode::print(int i)
 
 void SentenceNode::execute(HadesExecutor& exec)
 {
-	std::vector<std::string> cmd;
+	std::vector<CommandForExecution> commands;
 	std::string out;
 	std::string in;
+
 	for(auto c: content)
 	{
 		if(std::shared_ptr<SentenceNode> s = std::dynamic_pointer_cast<SentenceNode>(c))
+		{
+			exec.presentExecCmd.push_back(std::make_unique<CommandForExecution>());
 			s->execute(exec);
+		}
 		else if(std::shared_ptr<AssignmentNode> ass = std::dynamic_pointer_cast<AssignmentNode>(c))
 		{
+			std::vector<std::string> assignmentValue;
+			std::unique_ptr<CommandForExecution> cmd = std::make_unique<CommandForExecution>();
+			if(!cmd)
+				return;
+
 			for(auto w: ass->value)
 			{	
-				if(w->fileOp == FROMFILE)
-					in = processedWords(w->words, exec);
-				else if(w->fileOp == TOFILE)
-					out = processedWords(w->words, exec);
-				else
-					cmd.push_back(processedWords(w->words, exec));
+				if(w->fileOp == TOFILE)
+					cmd->toFile = processedWords(w->words, exec);
+				else if(w->fileOp != FROMFILE)
+					assignmentValue.push_back(processedWords(w->words, exec));
 			}
 
-			exec.variables[ass->varName] = std::accumulate(cmd.begin(), cmd.end(), std::string(),
+			exec.variables[ass->varName] = std::accumulate(assignmentValue.begin(), assignmentValue.end(), std::string(),
 					[](const std::string &acc, const std::string &str)
 					{
 						return acc+str;
 					});
-			cmd.clear();
+			if(!exec.presentExecCmd.size())
+				exec.presentExecCmd.push_back(std::make_unique<CommandForExecution>());
+			exec.presentExecCmd.back()->supplementCommand(std::move(cmd));
 		}
 		else
 		{
+			std::unique_ptr<CommandForExecution> cmd = std::make_unique<CommandForExecution>();
+			if(!cmd)
+				return;
 			std::shared_ptr<WordsNode> w = std::dynamic_pointer_cast<WordsNode>(c);
+			std::string processed = processedWords(w->words, exec);;
 			if(w->fileOp == FROMFILE)
-				in = processedWords(w->words, exec);
+				cmd->fromFile = processed;
 			else if(w->fileOp == TOFILE)
-				out = processedWords(w->words, exec);
+				cmd->toFile = processed;
 			else
-				cmd.push_back(processedWords(w->words, exec));
+				cmd->argv.push_back(processed);
+			if(!exec.presentExecCmd.size())
+				exec.presentExecCmd.push_back(std::make_unique<CommandForExecution>());
+			exec.presentExecCmd.back()->supplementCommand(std::move(cmd));
 		}
-	}
-	if(cmd.size())
-	{
-		std::cout << "CMD: ";
-		for(auto c: cmd)
-			std::cout << c << " ";
-		std::cout << "\nIN: " << in << std::endl;
-		std::cout << "OUT: " << out << std::endl;
 	}
 }
 
 void AssignmentNode::execute(HadesExecutor& exec)
 {
-	//exec.variables[varName] = processedWords(value, exec);
 }
 
 void WordsNode::execute(HadesExecutor& exec)
 {
-}
-
-void PipeNode::execute(HadesExecutor& exec)
-{
-	for(auto s: sentences)
-		s->execute(exec);
 }
 
 void ProgramNode::execute(HadesExecutor& exec)
@@ -211,6 +203,7 @@ void ProgramNode::execute(HadesExecutor& exec)
 		else
 		{
 			(*it)->execute(exec);
+			exec.executeCommands();
 			it++;
 		}
 	}
@@ -232,4 +225,116 @@ void WhileLoopNode::execute(HadesExecutor& exec)
 {
 	condition->execute(exec);
 	body->execute(exec);
+}
+
+void HadesExecutor::executeCommands()
+{
+	std::vector<std::unique_ptr<int[]>> pipes;
+	std::vector<pid_t> children;
+	if(!presentExecCmd.size())
+		return;
+
+	if(presentExecCmd.size() > 1)
+	{
+		pipes.resize(presentExecCmd.size()-1);
+		for(auto &p: pipes)
+		{
+			p = std::make_unique<int[]>(2);
+			if(p[0])
+				return;
+		}
+	}
+
+	for(auto &p: pipes)
+	{
+		if(pipe(p.get()) == -1)
+        {
+            std::cerr << "pipe error\n";
+            return;
+        }
+	}
+
+	for(size_t i=0; i<presentExecCmd.size(); i++)
+	{
+		auto &cmd = presentExecCmd[i];
+		children.push_back(fork());
+		if(children[i] == -1)
+        {
+            std::cerr << "fork error\n";
+            return;
+        }
+		if(children[i] == 0)
+		{
+			int readFile, writeFile;
+			if(presentExecCmd.size() > 1)
+			{
+				if(i == 0)
+				{
+					dup2(pipes[0][1], 1);
+					for(size_t j=0; j<pipes.size(); j++)
+					{
+						close(pipes[j][0]);
+						close(pipes[j][1]);
+					}
+				}
+				else if(i == presentExecCmd.size()-1)
+				{
+					dup2(pipes[i-1][0], 0);
+					for(size_t j=0; j<pipes.size(); j++)
+					{
+						close(pipes[j][0]);
+						close(pipes[j][1]);
+					}
+				}
+				else
+				{
+					dup2(pipes[i-1][0], 0);
+					dup2(pipes[i][1], 1);
+
+					for(size_t j=0; j<pipes.size(); j++)
+					{
+						close(pipes[j][0]);
+						close(pipes[j][1]);
+					}
+				}
+			}
+
+			if(!cmd->fromFile.empty())
+			{
+				readFile = open(cmd->fromFile.c_str(), O_RDONLY);
+				if(readFile == -1)
+				{
+					std::cerr << "error opening readFile\n";
+					return;
+				}
+				dup2(readFile, 0);
+			}
+
+			if(!cmd->toFile.empty())
+			{
+				writeFile = open(cmd->toFile.c_str(), O_WRONLY|O_CREAT, 0644);
+				if(writeFile == -1)
+				{
+					std::cerr << "error opening toFile\n";
+					return;
+				}
+				dup2(writeFile, 1);
+			}
+
+			const char *pathname = cmd->argv[0].c_str();
+			const char** arguments = new const char*[cmd->argv.size()+1];
+			if(!arguments)
+				return;
+
+			for(size_t j=0; j<cmd->argv.size(); j++)
+				arguments[j] = cmd->argv[j].c_str();
+			arguments[cmd->argv.size()] = 0;
+
+			execve(pathname, (char* const*)arguments, NULL);
+			std::cerr << "execve failed: " << strerror(errno) << "\n";
+			delete[] arguments;
+		}
+	}
+	presentExecCmd.clear();
+
 }

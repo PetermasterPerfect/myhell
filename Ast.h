@@ -1,10 +1,11 @@
 #pragma once
 #include "HadesParser.h"
-//#include "HadesExecutor.h"
 #include <memory>
 #include <vector>
 #include <unordered_map>
 #include <numeric>
+#include <unistd.h>
+#include <fcntl.h>
 
 class HadesExecutor;
 
@@ -19,6 +20,22 @@ enum Redirection {NONE, TOFILE, FROMFILE};
 
 std::string processWords(std::vector<std::string>);
 bool isWordQuoted(std::string);
+
+
+struct CommandForExecution
+{
+	std::vector<std::string> argv;
+	std::string toFile;
+	std::string fromFile;
+
+	void supplementCommand(std::unique_ptr<CommandForExecution> ex)
+	{
+		argv.insert(argv.end(), ex->argv.begin(), ex->argv.end());
+		toFile = ex->toFile;
+		fromFile = ex->fromFile;
+	}
+	~CommandForExecution()=default;
+};
 
 class AstNode
 {
@@ -69,15 +86,6 @@ public:
 	void print(int) override;
 	void execute(HadesExecutor&) override;
 
-};
-
-class PipeNode : public AstNode
-{
-public:
-	std::vector<std::shared_ptr<SentenceNode>> sentences;
-	PipeNode(): AstNode(PIPE) {}
-	void print(int) override;
-	void execute(HadesExecutor&) override;
 };
 
 class ProgramNode : public AstNode
@@ -139,7 +147,10 @@ class HadesExecutor
 public:
 	std::unordered_map<std::string, std::string> variables;
 	std::unordered_map<std::string,	std::shared_ptr<ProgramNode>> functions;
+	std::vector<std::unique_ptr<CommandForExecution>> presentExecCmd;
 
 	HadesExecutor(){}
+
+	void executeCommands();
 };
 

@@ -59,10 +59,7 @@ class AstBuilder : public HadesBaseVisitor
 	virtual std::any visitIfStatement(HadesParser::IfStatementContext *ctx) override;
 	virtual std::any visitElseStatement(HadesParser::ElseStatementContext *ctx) override;
 	virtual std::any visitWhileLoop(HadesParser::WhileLoopContext *ctx) override;
-	//virtual std::any visitPipe(HadesParser::PipeContext *ctx) override;
 	virtual std::any visitSentence(HadesParser::SentenceContext *ctx) override;
-	//virtual std::any visitConditionBlock(HadesParser::ConditionBlockContext *ctx) override;
-	//virtual std::any visitCodeBlock(HadesParser::CodeBlockContext *ctx) override;
 	
 	void runAsssignmentParser(std::string sentence);
 	void pseudoVisitWords(HadesParser::WordsContext *ctx);

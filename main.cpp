@@ -4,31 +4,32 @@
 int main(int argc, char **argv)
 {
 	HadesExecutor exec;
-	std::string fullCmd;		
+	std::string fullCmdInput;		
 
 	LexerErrorListener lexerErrListener;
 	std::shared_ptr<AstBuilderErrorStrategy> handler = std::make_shared<AstBuilderErrorStrategy>();
 	if(!handler)
 		return -1;
 
+	std::unique_ptr<AstBuilder> test;
 	while(1)
 	{
 		try
 		{
-		std::string cmd;
-		if(fullCmd.empty())
+		std::string cmdInput;
+		if(fullCmdInput.empty())
 			std::cout << "$ ";
 		else
 		{
 			std::cout << "> ";
-			fullCmd += '\n';
+			fullCmdInput += '\n';
 		}
-		std::getline(std::cin, cmd);
-		fullCmd += cmd;
+		std::getline(std::cin, cmdInput);
+		fullCmdInput += cmdInput;
 		//std::cout << "full: " << fullCmd << "\n";
 		//std::ifstream f("../test1.had");
 		//ANTLRInputStream input(f);
-		ANTLRInputStream input(fullCmd);
+		ANTLRInputStream input(fullCmdInput);
 		HadesLexer lexer(&input);
 		lexer.removeErrorListeners();
 		lexer.addErrorListener(&lexerErrListener);
@@ -37,16 +38,15 @@ int main(int argc, char **argv)
 		parser.setErrorHandler(handler);
 		
 		ParseTree *tree = parser.program();
-		AstBuilder test(tokens);
-		test.visit(tree);
-		test.printAst();
-		test.getAstTree()->execute(exec);
-		fullCmd.erase();
+		test = std::make_unique<AstBuilder>(tokens);
+		test->visit(tree);
+		fullCmdInput.erase();
 		}
 		catch(std::exception const &e)
 		{
-			std::cerr << "EXC: " << e.what() << "\n";
 		}
+		test->printAst();
+		test->getAstTree()->execute(exec);
 
 		
 	}

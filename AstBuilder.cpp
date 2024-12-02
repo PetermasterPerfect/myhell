@@ -124,49 +124,6 @@ std::any AstBuilder::visitWhileLoop(HadesParser::WhileLoopContext *ctx)
 	return std::any(1);
 }
 
-/*
-std::any AstBuilder::visitPipe(HadesParser::PipeContext *ctx)
-{
-	std::shared_ptr<ProgramNode> top = dynamic_pointer_cast<ProgramNode>(path.top());
-	std::shared_ptr<PipeNode> pipe = std::make_shared<PipeNode>();
-	if(!pipe)
-		return std::any(0);
-
-	top->codeNodes.push_back(pipe);
-	path.push(pipe);
-
-	auto ss = ctx->sentence();
-	for(auto s: ss)
-	{
-		visit(s);
-		size_t lastSenteceSize = pipe->sentences.back()->atomNodes.size();
-		if(!lastSenteceSize)
-			std::cerr << "Unclosed pipe\n";
-	}
-
-	path.pop();
-	return std::any(1);
-}
-
-std::any AstBuilder::visitConditionBlock(HadesParser::ConditionBlockContext *ctx)
-{
-	if(!ctx->RIGHTBRACKET())
-		throw std::runtime_error("UNCLOSED RIGHTBRACKET");
-	for(const auto &child: ctx->children)
-		visit(child);
-	return std::any(1);
-}
-
-std::any AstBuilder::visitCodeBlock(HadesParser::CodeBlockContext *ctx)
-{
-	if(!ctx->RIGHTCURLYBRACKET())
-		throw std::runtime_error("UNCLOSED RIGHTCURLYBRACKET");
-	for(const auto &child: ctx->children)
-		visit(child);
-	return std::any(1);
-}
-*/
-
 void AstBuilder::runAsssignmentParser(std::string sentence)
 {
 	ANTLRInputStream input(sentence);
@@ -203,7 +160,6 @@ std::string AstBuilder::recoverSpacesFromTokens(HadesParser::WordsContext *ctx)
 			if((processingWord.size()-1-c)%2)
 				throw std::runtime_error("UNSLASHED");
 		}
-		//std::cout << "Word: " << processingWord << "\n";
 		ret += processingWord;
 	}
 	return ret;
@@ -219,16 +175,6 @@ void AstBuilder::pseudoVisitWords(HadesParser::WordsContext *ctx)
 	}
 	catch(size_t pos)
 	{
-//		if(pos)
-//			runAsssignmentParser(sentenceWithSpaces.substr(0, pos), path);
-
-		//path.pop();
-		//if(!sentence->content.size())
-		//	topSentence->content.pop_back();
-
-		//topSentence->sentences.push_back(std::make_shared<SentenceNode>());
-		//path.push(topSentence->sentences.back());
-		//std::cout << "catchpseudo...\n";
 
 		topSentence->content.clear();
 		ANTLRInputStream input = ANTLRInputStream(sentenceWithSpaces.substr(pos));
@@ -275,12 +221,10 @@ std::any AstBuilder::visitSentence(HadesParser::SentenceContext *ctx)
 	{
 		if(ctx->PIPE())
 		{
-			//std::cout << "word0\n";
 			pushToProgramOrSentence();
 			pseudoVisitWords(ctx->words()[0]);
 			path.pop();
 			pushToProgramOrSentence();
-			//std::cout << "word1\n";
 			pseudoVisitWords(ctx->words()[1]);
 			path.pop();
 			path.pop();
