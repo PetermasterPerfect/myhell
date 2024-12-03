@@ -330,11 +330,49 @@ void HadesExecutor::executeCommands()
 				arguments[j] = cmd->argv[j].c_str();
 			arguments[cmd->argv.size()] = 0;
 
+			for(auto& s : basePaths)// feature equivalent to PATH variable
+			{
+				if(fileExistsInDir(s, cmd->argv[0]))
+				{
+					std::string temp = s+cmd->argv[0];
+					pathname = temp.c_str();
+				}
+			}
+
 			execve(pathname, (char* const*)arguments, NULL);
 			std::cerr << "execve failed: " << strerror(errno) << "\n";
-			delete[] arguments;
+			exit(-1);
 		}
 	}
+
+    for(auto& pipe: pipes)
+    {
+        close(pipe[0]);
+        close(pipe[1]);
+    }
+
+	while(waitpid(children.back(), 0, 0) == -1);
 	presentExecCmd.clear();
 
+}
+
+bool HadesExecutor::fileExistsInDir(std::string dirPath, std::string file)
+{
+	DIR *dir = opendir(dirPath.c_str());
+    dirent *entry;
+
+    if(dir == NULL)
+    	return false;
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+	if(file == entry->d_name)
+	{
+		closedir(dir);
+		return true;
+	}
+    }
+    
+    closedir(dir);
+	return false;
 }

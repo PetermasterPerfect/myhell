@@ -40,13 +40,14 @@ int main(int argc, char **argv)
 		ParseTree *tree = parser.program();
 		test = std::make_unique<AstBuilder>(tokens);
 		test->visit(tree);
+		test->printAst();
+		test->getAstTree()->execute(exec);
 		fullCmdInput.erase();
 		}
 		catch(std::exception const &e)
 		{
 		}
-		test->printAst();
-		test->getAstTree()->execute(exec);
+
 
 		
 	}

@@ -6,6 +6,9 @@
 #include <numeric>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/wait.h>
 
 class HadesExecutor;
 
@@ -144,6 +147,8 @@ public:
 
 class HadesExecutor
 {
+	std::vector<std::string> basePaths = {"/usr/bin/", "/usr/sbin/"};
+	bool fileExistsInDir(std::string dirPath, std::string file);
 public:
 	std::unordered_map<std::string, std::string> variables;
 	std::unordered_map<std::string,	std::shared_ptr<ProgramNode>> functions;
