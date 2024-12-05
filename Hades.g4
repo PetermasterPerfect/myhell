@@ -22,11 +22,6 @@ sentence: sentence PIPE NL*? sentence
 	| words PIPE NL*? words
 	| words;
 
-//sentences: (pipe|sentence) (SEMI? NL*? (pipe|sentence))* SEMI? NL*?;
-
-//sentence: word+? SEMI? NL*?;
-
-//TODO: unlosed words action
 words: word+;
 word: ALPHANUMERIC | LESS | GREATER | RAW_STRING | QUOTED_STRING | UNCLOSED_QUOTED_STRING;
 
@@ -48,11 +43,13 @@ PIPE: '|';
 ALPHANUMERIC: [a-zA-Z][a-zA-Z0-9]+;
 STRING_ESCAPE: '\\'.;
 
-RAW_STRING: (STRING_ESCAPE | ~[ \\"'|\t\r\n;])+;
+RAW_STRING: (STRING_ESCAPE | ~[ \\"'`|\t\r\n;])+;
 QUOTED_STRING: '\'' (STRING_ESCAPE | ~[\\'])* '\''
-		| '"' (STRING_ESCAPE | ~[\\"])* '"';
+		| '"' (STRING_ESCAPE | ~[\\"])* '"'
+		| '`' (STRING_ESCAPE | ~[\\`])* '`';
 
 
 UNCLOSED_QUOTED_STRING: '\'' (STRING_ESCAPE | ~[\\'])*
-		| '"' (STRING_ESCAPE | ~[\\"])*;
+		| '"' (STRING_ESCAPE | ~[\\"])*
+		| '`' (STRING_ESCAPE | ~[\\`])*;
 NL: [\r\n];// -> channel(2);

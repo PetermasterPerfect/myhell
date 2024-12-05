@@ -175,7 +175,6 @@ void AstBuilder::pseudoVisitWords(HadesParser::WordsContext *ctx)
 	}
 	catch(size_t pos)
 	{
-
 		topSentence->content.clear();
 		ANTLRInputStream input = ANTLRInputStream(sentenceWithSpaces.substr(pos));
 		SentenceHadesLexer lexer(&input);
@@ -210,44 +209,29 @@ std::shared_ptr<SentenceNode> AstBuilder::pushToProgramOrSentence(bool stricte)
 	}
 	return sentence;
 }
+
 std::any AstBuilder::visitSentence(HadesParser::SentenceContext *ctx)
 {
 	std::shared_ptr<SentenceNode> sentence = pushToProgramOrSentence();
 	if(!sentence)
 		return std::any(0);
 
-	// case 2 or 1
-	if(!ctx->sentence().size())
+	// case 1
+	if(ctx->PIPE())
 	{
-		if(ctx->PIPE())
-		{
-			pushToProgramOrSentence();
-			pseudoVisitWords(ctx->words()[0]);
-			path.pop();
-			pushToProgramOrSentence();
-			pseudoVisitWords(ctx->words()[1]);
-			path.pop();
-			path.pop();
-		}
-		else // case with normal sentence just words no pipes
-		{
-			pseudoVisitWords(ctx->words()[0]);
-			path.pop();
-		}
+		pushToProgramOrSentence();
+		pseudoVisitWords(ctx->words()[0]);
+		path.pop();
+		pushToProgramOrSentence();
+		pseudoVisitWords(ctx->words()[1]);
+		path.pop();
+		path.pop();
 	}
-	else // case 3
+	else // case 2 with normal sentence just words no pipes
 	{
-		std::cout << "begin\n";
-		for(auto s: ctx->sentence())
-		{
-			std::cout << "visit\n";
-			visit(s);
-		}
-		std::cout << "end\n";
+		pseudoVisitWords(ctx->words()[0]);
 		path.pop();
 	}
 
 	return std::any(1);
 }
-
-

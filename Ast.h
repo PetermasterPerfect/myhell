@@ -24,6 +24,11 @@ enum Redirection {NONE, TOFILE, FROMFILE};
 std::string processWords(std::vector<std::string>);
 bool isWordQuoted(std::string);
 
+class SyntaxError : public std::runtime_error
+{
+public:
+	SyntaxError(std::string msg): std::runtime_error(msg) {}
+};
 
 struct CommandForExecution
 {
@@ -54,14 +59,10 @@ class SentenceNode : public AstNode
 {
 public:
 	/*
-	 * SentenceNode can represent 3 situations
-	 * case 1: pipe of pipes
+	 * SentenceNode can represent 2 situations
+	 * case 1: pipe of pipes or sentences
 	 * 	content has 2 elements representing sentences
-	 * case 2: pipe of sentences
-	 * 	content has at least 2 elements which are list of words
-	 * 	it may be more in case 
-	 * case 3: normal sentece
-	 *  content has 1 element which is list of words
+	 * case 2: just sentence
 	 */
 	std::vector<std::shared_ptr<AstNode>> content;
 	SentenceNode(): AstNode(SENTENCE) {}
@@ -143,6 +144,7 @@ public:
 		body(std::make_shared<ProgramNode>()){}
 	void print(int) override;
 	void execute(HadesExecutor&) override;
+	int runConditionForStatus(HadesExecutor&);
 };
 
 class HadesExecutor
@@ -153,9 +155,9 @@ public:
 	std::unordered_map<std::string, std::string> variables;
 	std::unordered_map<std::string,	std::shared_ptr<ProgramNode>> functions;
 	std::vector<std::unique_ptr<CommandForExecution>> presentExecCmd;
+	int lastStatus;
 
 	HadesExecutor(){}
-
-	void executeCommands();
+	int executeCommands();
 };
 

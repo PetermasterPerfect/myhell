@@ -15,12 +15,13 @@ GREATER: '>';
 ASSIGN: '=';
 VAR: '$' ALPHANUM;
 
-ALPHANUM: [a-zA-Z][a-zA-Z0-9]*;
-RAW_STRING: (STRING_ESCAPE | ~[ <>=|\t\r\n'";])+;
+ALPHANUM: [a-zA-Z] [a-zA-Z0-9]*;
+RAW_STRING: (STRING_ESCAPE | ~[ <>=|\t\r\n'"`;])+;
 STRING_ESCAPE: '\\'.;
 
 QUOTED_STRING: '\'' (STRING_ESCAPE | ~[\\'])* '\''
-		| '"' (STRING_ESCAPE | ~[\\"])* '"';
+		| '"' (STRING_ESCAPE | ~[\\"])* '"'
+		| '`' (STRING_ESCAPE | ~[\\`])* '`';
 
 
 

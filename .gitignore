@@ -2,7 +2,7 @@ build/
 test/
 org_src/
 tags
-Session.vim
+*.vim
 *.swp
 *.swo
 antlr4.jar

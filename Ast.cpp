@@ -1,9 +1,17 @@
 #include "Ast.h"
+#include "ArithmeticEval.h"
 
 // we can assume word has closing quote because it's checked during building ast
 bool isWordQuoted(std::string str)
 {
 	if(str[0] == '"' || str[0] == '\'')
+		return true;
+	return false;
+}
+
+bool isWordForArithmetic(std::string str)
+{
+	if(str[0] == '`')
 		return true;
 	return false;
 }
@@ -15,7 +23,7 @@ std::string processedWords(std::vector<std::string> words, HadesExecutor& exec)
 	{
 		if(w[0] == '$')
 		{
-			std::string key = w.substr(1, w.size());
+			std::string key = w.substr(1);
 			if(auto value = exec.variables.find(key); value != exec.variables.end())
 				processedWord += value->second;
 		}
@@ -38,6 +46,27 @@ std::string processedWords(std::vector<std::string> words, HadesExecutor& exec)
 					else
 						processedWord+=*it;
 				}
+			else if(isWordForArithmetic(w) && w.size() > 2)
+			{
+				ANTLRInputStream input(w.substr(1, w.size()-2));
+				ArithmeticLexer lexer(&input);
+				CommonTokenStream tokens(&lexer);
+				ArithmeticParser parser(&tokens);
+				ArithmeticErrorListener errListener;
+				parser.removeErrorListeners();
+				parser.addErrorListener(&errListener);
+				
+				ParseTree *tree = parser.expr();
+				ArithmeticEval eval(exec);
+				try
+				{
+					processedWord += std::to_string(std::any_cast<int>(eval.visit(tree)));
+				}
+				catch(...)
+				{
+					throw SyntaxError("Unexpected keyword in arithmetic operation");
+				}
+			}
 			else
 				for(auto it=w.begin(); it!=w.end(); it++)
 				{
@@ -216,23 +245,44 @@ void FunctionDefNode::execute(HadesExecutor& exec)
 
 void IfStatementNode::execute(HadesExecutor& exec)
 {
-	for(auto c: condCodeNodes)
-		c->execute(exec);
-	elseNode->execute(exec);
+	bool f = false;
+	for(auto it=condCodeNodes.begin(); it!=condCodeNodes.end(); )
+	{
+		(*it)->execute(exec);
+		if(!exec.lastStatus)
+		{
+			it++;
+			(*it)->execute(exec);
+			it++;
+			f=true;
+			break;
+		}
+		else
+			it+=2;
+	}
+	if(!f)
+		elseNode->execute(exec);
+}
+
+
+int WhileLoopNode::runConditionForStatus(HadesExecutor &exec)
+{
+	condition->execute(exec);
+	return exec.lastStatus;
 }
 
 void WhileLoopNode::execute(HadesExecutor& exec)
 {
-	condition->execute(exec);
-	body->execute(exec);
+	while(!runConditionForStatus(exec))
+		body->execute(exec);
 }
 
-void HadesExecutor::executeCommands()
+int HadesExecutor::executeCommands()
 {
 	std::vector<std::unique_ptr<int[]>> pipes;
 	std::vector<pid_t> children;
 	if(!presentExecCmd.size())
-		return;
+		return -1;
 
 	if(presentExecCmd.size() > 1)
 	{
@@ -241,7 +291,7 @@ void HadesExecutor::executeCommands()
 		{
 			p = std::make_unique<int[]>(2);
 			if(p[0])
-				return;
+				return -1;
 		}
 	}
 
@@ -250,7 +300,7 @@ void HadesExecutor::executeCommands()
 		if(pipe(p.get()) == -1)
         {
             std::cerr << "pipe error\n";
-            return;
+            return -1;
         }
 	}
 
@@ -261,7 +311,7 @@ void HadesExecutor::executeCommands()
 		if(children[i] == -1)
         {
             std::cerr << "fork error\n";
-            return;
+            return -1;
         }
 		if(children[i] == 0)
 		{
@@ -305,7 +355,7 @@ void HadesExecutor::executeCommands()
 				if(readFile == -1)
 				{
 					std::cerr << "error opening readFile\n";
-					return;
+					return -1;
 				}
 				dup2(readFile, 0);
 			}
@@ -316,7 +366,7 @@ void HadesExecutor::executeCommands()
 				if(writeFile == -1)
 				{
 					std::cerr << "error opening toFile\n";
-					return;
+					return -1;
 				}
 				dup2(writeFile, 1);
 			}
@@ -324,7 +374,7 @@ void HadesExecutor::executeCommands()
 			const char *pathname = cmd->argv[0].c_str();
 			const char** arguments = new const char*[cmd->argv.size()+1];
 			if(!arguments)
-				return;
+				return -1;
 
 			for(size_t j=0; j<cmd->argv.size(); j++)
 				arguments[j] = cmd->argv[j].c_str();
@@ -350,10 +400,13 @@ void HadesExecutor::executeCommands()
         close(pipe[0]);
         close(pipe[1]);
     }
-
-	while(waitpid(children.back(), 0, 0) == -1);
+	
+	int status;
+	while(waitpid(children.back(), &status, 0) == -1);
+	std::cout << "status: " << status << "\n";
 	presentExecCmd.clear();
-
+	lastStatus = status;
+	return status;
 }
 
 bool HadesExecutor::fileExistsInDir(std::string dirPath, std::string file)
@@ -366,11 +419,11 @@ bool HadesExecutor::fileExistsInDir(std::string dirPath, std::string file)
 
     while ((entry = readdir(dir)) != NULL)
     {
-	if(file == entry->d_name)
-	{
-		closedir(dir);
-		return true;
-	}
+		if(file == entry->d_name)
+		{
+			closedir(dir);
+			return true;
+		}
     }
     
     closedir(dir);

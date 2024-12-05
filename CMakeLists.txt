@@ -31,6 +31,9 @@ execute_process(
 	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${PROJECT_SOURCE_DIR}/Hades.g4 -o ${PROJECT_SOURCE_DIR}/build)
 
 execute_process(
+	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${PROJECT_SOURCE_DIR}/Arithmetic.g4 -o ${PROJECT_SOURCE_DIR}/build)
+
+execute_process(
 	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${PROJECT_SOURCE_DIR}/AssHades.g4 -o ${PROJECT_SOURCE_DIR}/build)
 
 execute_process(
