@@ -1,11 +1,13 @@
 #include "AstBuilder.h"
 #include <iostream>
+#include <locale>
+#include <codecvt>
 
 int main(int argc, char **argv)
 {
 	HadesExecutor exec;
 	std::string fullCmdInput;		
-
+	std::locale::global(std::locale("C.utf8"));
 	LexerErrorListener lexerErrListener;
 	std::shared_ptr<AstBuilderErrorStrategy> handler = std::make_shared<AstBuilderErrorStrategy>();
 	if(!handler)
@@ -18,7 +20,7 @@ int main(int argc, char **argv)
 		{
 			std::string cmdInput;
 			if(fullCmdInput.empty())
-				std::cout << "$ ";
+				std::wcout << L"\U0001F525 ";
 			else
 			{
 				std::cout << "> ";
@@ -40,7 +42,7 @@ int main(int argc, char **argv)
 			ParseTree *tree = parser.program();
 			test = std::make_unique<AstBuilder>(tokens);
 			test->visit(tree);
-			test->printAst();
+			//test->printAst();
 			test->getAstTree()->execute(exec);
 			fullCmdInput.erase();
 		}

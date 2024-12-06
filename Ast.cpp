@@ -231,6 +231,7 @@ void ProgramNode::execute(HadesExecutor& exec)
 		}
 		else
 		{
+			exec.presentExecCmd.clear();
 			(*it)->execute(exec);
 			exec.executeCommands();
 			it++;
@@ -307,6 +308,7 @@ int HadesExecutor::executeCommands()
 	for(size_t i=0; i<presentExecCmd.size(); i++)
 	{
 		auto &cmd = presentExecCmd[i];
+
 		children.push_back(fork());
 		if(children[i] == -1)
         {
@@ -371,6 +373,19 @@ int HadesExecutor::executeCommands()
 				dup2(writeFile, 1);
 			}
 
+			if(auto func = functions.find(cmd->argv[0]); func != functions.end())
+			{
+
+				pushArgumentsToScope(cmd->argv);
+
+				func->second->execute(*this);
+
+				exit(lastStatus);
+			}
+			if(std::find(builtinCmd.begin(), builtinCmd.end(), cmd->argv[0]) != builtinCmd.end())
+				executeBuiltinCommand(i);
+
+
 			const char *pathname = cmd->argv[0].c_str();
 			const char** arguments = new const char*[cmd->argv.size()+1];
 			if(!arguments)
@@ -390,7 +405,7 @@ int HadesExecutor::executeCommands()
 			}
 
 			execve(pathname, (char* const*)arguments, NULL);
-			std::cerr << "execve failed: " << strerror(errno) << "\n";
+			std::cerr << strerror(errno) << "\n";
 			exit(-1);
 		}
 	}
@@ -403,10 +418,67 @@ int HadesExecutor::executeCommands()
 	
 	int status;
 	while(waitpid(children.back(), &status, 0) == -1);
-	std::cout << "status: " << status << "\n";
+	//std::cout << "status: " << status << "\n";
 	presentExecCmd.clear();
 	lastStatus = status;
 	return status;
+}
+
+
+void HadesExecutor::pushArgumentsToScope(std::vector<std::string> argv)
+{
+	std::unordered_map<std::string,std::string> arguments;
+	for(size_t i=1; i<argv.size(); i++)
+	{
+		std::stringstream argi;
+		argi << "arg" << i;
+		arguments[argi.str()] = argv[i];
+		variables[argi.str()] = argv[i];
+	}
+	argumentsScope.push(arguments);
+}
+
+void HadesExecutor::popArgumentsAndRestoreScope()
+{
+	auto top = argumentsScope.top();
+	auto destScope = argumentsScope.top();
+	if(destScope.size() < top.size())
+		for(size_t i=destScope.size(); i<top.size(); i++)
+		{
+			std::stringstream argi;
+			argi << "arg" << i;
+			variables.erase(variables.find(argi.str()));
+		}
+	for(auto &p: destScope)
+	{
+		variables[p.first] = p.second;
+	}
+
+	argumentsScope.pop();
+}
+
+void HadesExecutor::executeBuiltinCommand(size_t i)
+{
+	auto &cmd = presentExecCmd[i];
+	if(cmd->argv[0] == "eval")
+	{
+		if(cmd->argv.size() == 0)
+		{
+			std::cerr << "Too few arguments for eval\n"; // TODO maybe throw
+			lastStatus = -1;
+		}
+		else if(cmd->argv.size() > 2)
+		{
+			std::cerr << "Too much arguments for eval\n";
+			lastStatus = -1;
+		}
+		else
+		{
+			int ret = stoi(cmd->argv[1]);
+			lastStatus = ret == 1 ? 0: -1;
+		}
+	}
+	exit(lastStatus);
 }
 
 bool HadesExecutor::fileExistsInDir(std::string dirPath, std::string file)

@@ -3,7 +3,9 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <array>
 #include <numeric>
+#include <sstream>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -149,15 +151,22 @@ public:
 
 class HadesExecutor
 {
+	std::array<std::string, 2> builtinCmd{"eval", "cd"};
 	std::vector<std::string> basePaths = {"/usr/bin/", "/usr/sbin/"};
 	bool fileExistsInDir(std::string dirPath, std::string file);
+	std::stack<std::unordered_map<std::string, std::string>> argumentsScope;
+
+	void pushArgumentsToScope(std::vector<std::string>);
+	void popArgumentsAndRestoreScope();
 public:
 	std::unordered_map<std::string, std::string> variables;
 	std::unordered_map<std::string,	std::shared_ptr<ProgramNode>> functions;
 	std::vector<std::unique_ptr<CommandForExecution>> presentExecCmd;
 	int lastStatus;
 
+
 	HadesExecutor(){}
 	int executeCommands();
+	void executeBuiltinCommand(size_t);
 };
 

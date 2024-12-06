@@ -40,7 +40,7 @@ SEMI: ';';
 ASSIGN: '=';
 PIPE: '|';
 
-ALPHANUMERIC: [a-zA-Z][a-zA-Z0-9]+;
+ALPHANUMERIC: [a-zA-Z][a-zA-Z0-9]*;
 STRING_ESCAPE: '\\'.;
 
 RAW_STRING: (STRING_ESCAPE | ~[ \\"'`|\t\r\n;])+;
