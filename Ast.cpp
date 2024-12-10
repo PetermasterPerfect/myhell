@@ -395,7 +395,7 @@ int HadesExecutor::executeCommands()
 				arguments[j] = cmd->argv[j].c_str();
 			arguments[cmd->argv.size()] = 0;
 
-			for(auto& s : basePaths)// feature equivalent to PATH variable
+			for(auto& s : basePaths)// feature simulating PATH variable
 			{
 				if(fileExistsInDir(s, cmd->argv[0]))
 				{
@@ -405,7 +405,22 @@ int HadesExecutor::executeCommands()
 			}
 
 			execve(pathname, (char* const*)arguments, NULL);
-			std::cerr << strerror(errno) << "\n";
+			std::stringstream err;
+			err << strerror(errno) << "\n";
+			
+			delete[] arguments;
+			arguments = new const char*[cmd->argv.size()+2];
+			if(!arguments)
+				return -1;
+
+
+			arguments[0] = "myhell";
+			for(size_t j=0; j<cmd->argv.size(); j++)
+				arguments[j+1] = cmd->argv[j].c_str();
+			arguments[cmd->argv.size()+1] = 0;
+
+			execve("myhell", (char* const*)arguments, NULL);
+			std::cerr << err.str();
 			exit(-1);
 		}
 	}

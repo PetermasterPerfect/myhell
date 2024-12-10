@@ -27,6 +27,17 @@ class LexerErrorListener : public BaseErrorListener
 	}
 };
 
+
+
+class AstBuilderErrorListener : public BaseErrorListener
+{
+	void syntaxError(Recognizer *recognizer, Token * offendingSymbol, size_t line, size_t charPositionInLine,
+      const std::string &msg, std::exception_ptr e)
+	{
+
+	}
+};
+
 class AstBuilderErrorStrategy : public DefaultErrorStrategy
 {
 	void recover(Parser *recognizer,  std::exception_ptr e)

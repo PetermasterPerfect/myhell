@@ -2,60 +2,114 @@
 #include <iostream>
 #include <locale>
 #include <codecvt>
+#include <sys/stat.h>
+
+
+void setupLexingParsingAndRun(ANTLRInputStream&, HadesExecutor&);
 
 int main(int argc, char **argv)
 {
 	HadesExecutor exec;
 	std::string fullCmdInput;		
 	std::locale::global(std::locale("C.utf8"));
+	struct stat sb;
+
+	if(argc >= 2)
+	{
+		if (stat(argv[1], &sb) == 0 && !(sb.st_mode & S_IXUSR)) 
+		{
+			std::cerr << argv[1] << ": Permission denied\n";
+			return -1;
+		}
+
+		std::string scriptName = argv[1];
+		std::vector<std::string> arguments;
+		for(size_t i=2; i<argc; i++)
+		{ 
+			std::stringstream argi;
+			argi << "arg" << i-1;
+			exec.variables[argi.str()] = argv[i];
+		}
+		
+		std::ifstream f(scriptName);
+		if(f)
+		{
+			try
+			{
+				ANTLRInputStream input(f);
+				setupLexingParsingAndRun(input, exec);
+
+			}
+			catch(SyntaxError const &e)
+			{
+				std::cerr << e.what() << std::endl;
+			}
+			catch(std::exception const &e)
+			{
+				std::cerr << e.what() << std::endl;
+			}
+
+		}
+		else
+		{
+			std::cerr << "Could not run the file\n";
+			return -1;
+		}
+
+	}
+	else
+	{
+		while(1)
+		{
+			try
+			{
+				std::string cmdInput;
+				if(fullCmdInput.empty())
+					std::wcout << L"\U0001F525 ";
+				else
+				{
+					std::cout << "> ";
+					fullCmdInput += '\n';
+				}
+				std::getline(std::cin, cmdInput);
+				fullCmdInput += cmdInput;
+				ANTLRInputStream input(fullCmdInput);
+				setupLexingParsingAndRun(input, exec);
+
+				fullCmdInput.erase();
+			}
+			catch(SyntaxError const &e)
+			{
+				std::cerr << e.what() << std::endl;
+				fullCmdInput.erase();
+			}
+			catch(std::exception const &e)
+			{
+			}
+		}
+	}
+}
+
+void setupLexingParsingAndRun(ANTLRInputStream &input, HadesExecutor &exec)
+{
 	LexerErrorListener lexerErrListener;
+	AstBuilderErrorListener errListener;
 	std::shared_ptr<AstBuilderErrorStrategy> handler = std::make_shared<AstBuilderErrorStrategy>();
 	if(!handler)
-		return -1;
+		throw std::runtime_error("Memory allocation failed");
+	std::unique_ptr<AstBuilder> builder;
 
-	std::unique_ptr<AstBuilder> test;
-	while(1)
-	{
-		try
-		{
-			std::string cmdInput;
-			if(fullCmdInput.empty())
-				std::wcout << L"\U0001F525 ";
-			else
-			{
-				std::cout << "> ";
-				fullCmdInput += '\n';
-			}
-			std::getline(std::cin, cmdInput);
-			fullCmdInput += cmdInput;
-			//std::cout << "full: " << fullCmd << "\n";
-			//std::ifstream f("../test1.had");
-			//ANTLRInputStream input(f);
-			ANTLRInputStream input(fullCmdInput);
-			HadesLexer lexer(&input);
-			lexer.removeErrorListeners();
-			lexer.addErrorListener(&lexerErrListener);
-			CommonTokenStream tokens(&lexer);
-			HadesParser parser(&tokens);
-			parser.setErrorHandler(handler);
-			
-			ParseTree *tree = parser.program();
-			test = std::make_unique<AstBuilder>(tokens);
-			test->visit(tree);
-			//test->printAst();
-			test->getAstTree()->execute(exec);
-			fullCmdInput.erase();
-		}
-		catch(SyntaxError const &e)
-		{
-			std::cerr << e.what() << std::endl;
-			fullCmdInput.erase();
-		}
-		catch(std::exception const &e)
-		{
-		}
-
-
-		
-	}
+	HadesLexer lexer(&input);
+	lexer.removeErrorListeners();
+	lexer.addErrorListener(&lexerErrListener);
+	CommonTokenStream tokens(&lexer);
+	HadesParser parser(&tokens);
+	parser.setErrorHandler(handler);
+	parser.removeErrorListeners();
+	parser.addErrorListener(&errListener);
+	
+	ParseTree *tree = parser.program();
+	builder = std::make_unique<AstBuilder>(tokens);
+	builder->visit(tree);
+	builder->getAstTree()->execute(exec);
 }
