@@ -304,6 +304,12 @@ int HadesExecutor::executeCommands()
         }
 	}
 
+	if(pipe(comPipes) == -1)
+	{
+		std::cerr << "pipe error\n";
+		return -1;
+	}
+
 	for(size_t i=0; i<presentExecCmd.size(); i++)
 	{
 		auto &cmd = presentExecCmd[i];
@@ -382,8 +388,12 @@ int HadesExecutor::executeCommands()
 				exit(lastStatus);
 			}
 			if(std::find(builtinCmd.begin(), builtinCmd.end(), cmd->argv[0]) != builtinCmd.end())
-				executeBuiltinCommand(i);
-
+				executeBuiltinCommandByChild(i);
+			else
+			{
+				close(comPipes[0]);
+				close(comPipes[1]);
+			}
 
 			const char *pathname = cmd->argv[0].c_str();
 			const char** arguments = new const char*[cmd->argv.size()+1];
@@ -422,8 +432,18 @@ int HadesExecutor::executeCommands()
 			std::cerr << err.str();
 			exit(-1);
 		}
+		else
+		{
+			if(std::find(builtinCmd.begin(), builtinCmd.end(), cmd->argv[0]) != builtinCmd.end())
+			{
+				char buf;
+				if(read(comPipes[0], &buf, 1))
+					executeBuiltinCommandByParent(i);
+			}
+			close(comPipes[0]);
+			close(comPipes[1]);
+		}
 	}
-
     for(auto& pipe: pipes)
     {
         close(pipe[0]);
@@ -470,7 +490,7 @@ void HadesExecutor::popArgumentsAndRestoreScope()
 	argumentsScope.pop();
 }
 
-void HadesExecutor::executeBuiltinCommand(size_t i)
+void HadesExecutor::executeBuiltinCommandByChild(size_t i)
 {
 	auto &cmd = presentExecCmd[i];
 	if(cmd->argv[0] == "eval")
@@ -491,7 +511,34 @@ void HadesExecutor::executeBuiltinCommand(size_t i)
 			lastStatus = ret == 1 ? 0: -1;
 		}
 	}
+	else
+	{
+		close(comPipes[0]);
+		write(comPipes[1], cmd->argv[0].c_str(), cmd->argv[0].size());
+		close(comPipes[1]);
+	}
 	exit(lastStatus);
+}
+
+void HadesExecutor::executeBuiltinCommandByParent(size_t i)
+{
+	auto &cmd = presentExecCmd[i];
+	if(cmd->argv[0] == "cd" )
+	{
+		if(cmd->argv.size() < 2)
+			std::cerr << "No argument given\n";
+		else if(cmd->argv.size() > 2)
+			std::cerr << "To many arguments\n";
+		else
+		{
+			if(chdir(cmd->argv[1].c_str()))
+				std::cerr << "Bad directory given\n";
+			else
+				std::cout << "Directory changed\n";
+		}
+	}
+	else if(cmd->argv[0] == "exit")
+		exit(0);
 }
 
 bool HadesExecutor::fileExistsInDir(std::string dirPath, std::string file)

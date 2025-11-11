@@ -151,11 +151,11 @@ public:
 
 class HadesExecutor
 {
-	std::array<std::string, 2> builtinCmd{"eval", "cd"};
+	std::array<std::string, 3> builtinCmd{"eval", "cd", "exit"};
 	std::vector<std::string> basePaths = {"/usr/bin/", "/usr/sbin/"};
 	bool fileExistsInDir(std::string dirPath, std::string file);
 	std::stack<std::unordered_map<std::string, std::string>> argumentsScope;
-
+	int comPipes[2];
 	void pushArgumentsToScope(std::vector<std::string>);
 	void popArgumentsAndRestoreScope();
 public:
@@ -167,6 +167,7 @@ public:
 
 	HadesExecutor(){}
 	int executeCommands();
-	void executeBuiltinCommand(size_t);
+	void executeBuiltinCommandByChild(size_t);
+	void executeBuiltinCommandByParent(size_t);
 };
 

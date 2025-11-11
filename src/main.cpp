@@ -86,6 +86,7 @@ int main(int argc, char **argv)
 			}
 			catch(std::exception const &e)
 			{
+				fullCmdInput.erase();
 			}
 		}
 	}
