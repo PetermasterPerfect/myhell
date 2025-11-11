@@ -153,7 +153,6 @@ void WhileLoopNode::print(int i)
 	body->print(i+1);
 }
 
-// ----------------------------------
 
 void SentenceNode::execute(HadesExecutor& exec)
 {
@@ -395,7 +394,7 @@ int HadesExecutor::executeCommands()
 				arguments[j] = cmd->argv[j].c_str();
 			arguments[cmd->argv.size()] = 0;
 
-			for(auto& s : basePaths)// feature simulating PATH variable
+			for(auto& s : basePaths)// simulating PATH variable
 			{
 				if(fileExistsInDir(s, cmd->argv[0]))
 				{
@@ -433,7 +432,6 @@ int HadesExecutor::executeCommands()
 	
 	int status;
 	while(waitpid(children.back(), &status, 0) == -1);
-	//std::cout << "status: " << status << "\n";
 	presentExecCmd.clear();
 	lastStatus = status;
 	return status;

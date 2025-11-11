@@ -71,7 +71,8 @@ int main(int argc, char **argv)
 					std::cout << "> ";
 					fullCmdInput += '\n';
 				}
-				std::getline(std::cin, cmdInput);
+				if(!std::getline(std::cin, cmdInput))
+					break;
 				fullCmdInput += cmdInput;
 				ANTLRInputStream input(fullCmdInput);
 				setupLexingParsingAndRun(input, exec);
