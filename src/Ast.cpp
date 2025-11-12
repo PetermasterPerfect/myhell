@@ -410,6 +410,7 @@ int HadesExecutor::executeCommands()
 				{
 					std::string temp = s+cmd->argv[0];
 					pathname = temp.c_str();
+					break;
 				}
 			}
 
