@@ -3,12 +3,15 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.20 FATAL_ERROR)
 set(CMAKE_CXX_STANDARD 20)
 project(myhell)
 
-if(NOT EXISTS ${PROJECT_SOURCE_DIR}/build/antlr4.jar)
+
+set(SOURCES ${PROJECT_SOURCE_DIR}/src)
+
+if(NOT EXISTS ${CMAKE_BINARY_DIR}/antlr4.jar)
 	file(
 	  DOWNLOAD https://www.antlr.org/download/antlr-4.13.0-complete.jar
 	  EXPECTED_HASH SHA256=bc6f4abc0d225a27570126c51402569f000a8deda3487b70e7642840e570e4a6
 	  SHOW_PROGRESS
-	  ${PROJECT_SOURCE_DIR}/build/antlr4.jar
+	  ${CMAKE_BINARY_DIR}/antlr4.jar
 	)
 endif()
 
@@ -24,33 +27,33 @@ include(ExternalAntlr4Cpp)
 # add antrl4cpp artifacts to project environment
 include_directories(${ANTLR4_INCLUDE_DIRS})
 
-set(ANTLR_EXECUTABLE ${PROJECT_SOURCE_DIR}/build/antlr4.jar)
+set(ANTLR_EXECUTABLE ${CMAKE_BINARY_DIR}/antlr4.jar)
 find_package(ANTLR REQUIRED)
 
 execute_process(
-	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${PROJECT_SOURCE_DIR}/src/Hades.g4 -o ${PROJECT_SOURCE_DIR}/build)
+	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${SOURCES}/Hades.g4 -o ${CMAKE_BINARY_DIR})
 
 execute_process(
-	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${PROJECT_SOURCE_DIR}/src/Arithmetic.g4 -o ${PROJECT_SOURCE_DIR}/build)
+	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${SOURCES}/Arithmetic.g4 -o ${CMAKE_BINARY_DIR})
 
 execute_process(
-	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${PROJECT_SOURCE_DIR}/src/AssHades.g4 -o ${PROJECT_SOURCE_DIR}/build)
+	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${SOURCES}/AssHades.g4 -o ${CMAKE_BINARY_DIR})
 
 execute_process(
-	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${PROJECT_SOURCE_DIR}/src/SentenceHades.g4 -o ${PROJECT_SOURCE_DIR}/build)
+	COMMAND java -jar ${ANTLR_EXECUTABLE} -no-listener -visitor -Dlanguage=Cpp ${SOURCES}/SentenceHades.g4 -o ${CMAKE_BINARY_DIR})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++17")
 
-include_directories(${PROJECT_SOURCE_DIR}/src)
-include_directories(${PROJECT_SOURCE_DIR}/build)
+include_directories(${SOURCES})
+include_directories(${CMAKE_BINARY_DIR})
 
 file(GLOB SOURCE
-	${PROJECT_SOURCE_DIR}/src/*.cpp
-	${PROJECT_SOURCE_DIR}/src/*.h)
+	${SOURCES}/*.cpp
+	${SOURCES}/*.h)
 
 file(GLOB BUILD
-	${PROJECT_SOURCE_DIR}/build/*.cpp
-	${PROJECT_SOURCE_DIR}/build/*.h)
+	${CMAKE_BINARY_DIR}/*.cpp
+	${CMAKE_BINARY_DIR}/*.h)
 
 
 # include generated files in project environment
