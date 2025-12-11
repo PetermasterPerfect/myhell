@@ -435,14 +435,14 @@ int HadesExecutor::executeCommands()
 		}
 		else
 		{
-			if(std::find(builtinCmd.begin(), builtinCmd.end(), cmd->argv[0]) != builtinCmd.end())
+			close(comPipes[1]);
+			if(cmd->argv.size() && std::find(builtinCmd.begin(), builtinCmd.end(), cmd->argv[0]) != builtinCmd.end())
 			{
 				char buf;
 				if(read(comPipes[0], &buf, 1))
 					executeBuiltinCommandByParent(i);
 			}
 			close(comPipes[0]);
-			close(comPipes[1]);
 		}
 	}
     for(auto& pipe: pipes)
@@ -511,6 +511,8 @@ void HadesExecutor::executeBuiltinCommandByChild(size_t i)
 			int ret = stoi(cmd->argv[1]);
 			lastStatus = ret == 1 ? 0: -1;
 		}
+		close(comPipes[0]);
+		close(comPipes[1]);
 	}
 	else
 	{
