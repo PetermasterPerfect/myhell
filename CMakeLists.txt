@@ -1,8 +1,6 @@
-# minimum required CMAKE version
 CMAKE_MINIMUM_REQUIRED(VERSION 3.20 FATAL_ERROR)
 set(CMAKE_CXX_STANDARD 20)
 project(myhell)
-
 
 set(SOURCES ${PROJECT_SOURCE_DIR}/src)
 
@@ -63,3 +61,4 @@ include_directories(${ANTLR_SampleGrammarParser_OUTPUT_DIR})
 # add generated grammar to demo binary target
 add_executable(myhell ${SOURCE} ${BUILD})
 target_link_libraries(myhell antlr4_static)
+install(TARGETS myhell RUNTIME DESTINATION bin)

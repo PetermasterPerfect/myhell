@@ -277,6 +277,16 @@ void WhileLoopNode::execute(HadesExecutor& exec)
 		body->execute(exec);
 }
 
+std::string HadesExecutor::addCommandToBasepath(std::string cmd)
+{
+	for(auto& s : basePaths)// simulating PATH variable
+	{
+		if(fileExistsInDir(s, cmd))
+			return s+cmd;
+	}
+	return cmd;
+}
+
 int HadesExecutor::executeCommands()
 {
 	std::vector<std::unique_ptr<int[]>> pipes;
@@ -404,15 +414,8 @@ int HadesExecutor::executeCommands()
 				arguments[j] = cmd->argv[j].c_str();
 			arguments[cmd->argv.size()] = 0;
 
-			for(auto& s : basePaths)// simulating PATH variable
-			{
-				if(fileExistsInDir(s, cmd->argv[0]))
-				{
-					std::string temp = s+cmd->argv[0];
-					pathname = temp.c_str();
-					break;
-				}
-			}
+			std::string temp = addCommandToBasepath(cmd->argv[0]);
+			pathname = temp.c_str();
 
 			execve(pathname, (char* const*)arguments, NULL);
 			std::stringstream err;
@@ -423,13 +426,14 @@ int HadesExecutor::executeCommands()
 			if(!arguments)
 				return -1;
 
-
-			arguments[0] = "myhell";
+			
+			std::string shellPath = addCommandToBasepath("myhell");
+			arguments[0] = shellPath.c_str();
 			for(size_t j=0; j<cmd->argv.size(); j++)
 				arguments[j+1] = cmd->argv[j].c_str();
 			arguments[cmd->argv.size()+1] = 0;
 
-			execve("myhell", (char* const*)arguments, NULL);
+			execve(shellPath.c_str(), (char* const*)arguments, NULL);
 			std::cerr << err.str();
 			exit(-1);
 		}
